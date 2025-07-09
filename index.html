@@ -35,7 +35,7 @@ const slider=document.getElementById('strikerSlider');
 let striker={x:200,y:360,r:12,vx:0,vy:0};
 let pucks=[], dragging=false, dragStart=null, dragEnd=null;
 let mode='', turn=0; // 0: player1, 1: player2
-let scores=[0,0];
+let waitingForNextTurn=true;
 
 function initPucks(){
   pucks=[];
@@ -45,7 +45,7 @@ function initPucks(){
 
 function restartGame(){
   striker.x=200; striker.y=360; striker.vx=0; striker.vy=0;
-  slider.value=200; turn=0; scores=[0,0];
+  slider.value=200; turn=0; waitingForNextTurn=true;
   initPucks();
   document.getElementById('winMessage').style.display='none';
   slider.style.display='block';
@@ -61,7 +61,7 @@ function startGame(selected){
 function showAbout(){document.getElementById('aboutBox').style.display='block';}
 function closeAbout(){document.getElementById('aboutBox').style.display='none';}
 
-slider.addEventListener('input',()=>{ if(allStopped()){ striker.x=+slider.value; } });
+slider.addEventListener('input',()=>{ if(waitingForNextTurn){ striker.x=+slider.value; } });
 
 function getPos(e){
   const rect=canvas.getBoundingClientRect();
@@ -69,17 +69,21 @@ function getPos(e){
   return {x:e.clientX-rect.left,y:e.clientY-rect.top};
 }
 
-canvas.addEventListener('mousedown',e=>{if(allStopped()&&isNearStriker(getPos(e))){dragging=true; dragStart=getPos(e); dragEnd=dragStart;}});
+canvas.addEventListener('mousedown',e=>{if(waitingForNextTurn&&isNearStriker(getPos(e))){dragging=true; dragStart=getPos(e); dragEnd=dragStart;}});
 canvas.addEventListener('mousemove',e=>{if(dragging) dragEnd=getPos(e);});
 canvas.addEventListener('mouseup',e=>{if(dragging){shoot();} dragging=false;});
-canvas.addEventListener('touchstart',e=>{if(allStopped()&&isNearStriker(getPos(e))){dragging=true; dragStart=getPos(e); dragEnd=dragStart;}});
+canvas.addEventListener('touchstart',e=>{if(waitingForNextTurn&&isNearStriker(getPos(e))){dragging=true; dragStart=getPos(e); dragEnd=dragStart;}});
 canvas.addEventListener('touchmove',e=>{if(dragging){dragEnd=getPos(e); e.preventDefault();}});
 canvas.addEventListener('touchend',e=>{if(dragging){shoot();} dragging=false;});
 
 function isNearStriker(pos){return Math.hypot(pos.x-striker.x,pos.y-striker.y)<striker.r+10;}
 function shoot(){
   const dx=dragEnd.x-dragStart.x, dy=dragEnd.y-dragStart.y, len=Math.hypot(dx,dy);
-  if(len>5){ striker.vx=-(dx/len)*6; striker.vy=-(dy/len)*6; slider.style.display='none'; }
+  if(len>5){ 
+    striker.vx=-(dx/len)*6; striker.vy=-(dy/len)*6; 
+    slider.style.display='none'; 
+    waitingForNextTurn=false;
+  }
 }
 
 function collide(a,b){
@@ -109,9 +113,11 @@ function physics(){
   });
   pucks.forEach(p=>collide(striker,p));
   for(let i=0;i<pucks.length;i++) for(let j=i+1;j<pucks.length;j++) collide(pucks[i],pucks[j]);
-  if(allStopped()){ 
-    turn=1-turn; striker.y=turn==0?360:40; slider.style.display='block'; 
-    slider.value=striker.x;
+
+  if(!waitingForNextTurn && allStopped()){ 
+    // next player's turn
+    turn=1-turn; striker.y=turn==0?360:40; slider.value=striker.x;
+    slider.style.display='block'; waitingForNextTurn=true;
   }
 }
 
