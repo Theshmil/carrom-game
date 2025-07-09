@@ -2,182 +2,170 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Carrom Pool</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Carrom Game</title>
 <style>
-  body { margin:0; background:#111; color:#fff; font-family:sans-serif; text-align:center; }
-  canvas { background:#d2b48c; border:8px solid #fff; border-radius:20px; touch-action:none; }
-  #menu { margin-top:50px; }
-  #menu button { margin:10px; padding:15px 30px; font-size:20px; background:#fff; color:#000; border:none; border-radius:10px; cursor:pointer; }
-  #winMessage, #aboutBox { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.8); padding:20px; border-radius:10px; font-size:20px; display:none; }
+  body {
+    margin: 0;
+    background: #3e2723;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #fff;
+    font-family: sans-serif;
+  }
+  h1 {
+    margin: 10px;
+  }
+  canvas {
+    background: radial-gradient(#deb887, #a0522d);
+    border: 8px solid #5d4037;
+    border-radius: 20px;
+  }
+  .menu {
+    margin: 10px;
+  }
+  .menu button {
+    margin: 5px;
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 8px;
+    background: #795548;
+    color: white;
+    cursor: pointer;
+  }
+  .menu button:hover {
+    background: #5d4037;
+  }
 </style>
 </head>
 <body>
-<h1>Carrom Pool</h1>
-<div id="menu">
-  <button onclick="startGame('local')">Local Multiplayer</button>
-  <button onclick="startGame('ai')">Play vs AI 🤖</button>
-  <button onclick="showAbout()">About</button>
+<h1>Carrom</h1>
+<div class="menu">
+  <button onclick="startGame('local')">Local Play</button>
+  <button onclick="startGame('ai')">AI 🤖</button>
+  <button onclick="alert('Created by Treadmil and Sofa')">About</button>
 </div>
-<canvas id="gameCanvas" width="400" height="400" style="display:none;"></canvas>
-<div id="winMessage">🎉 You Win! <button onclick="restartGame()">Play Again</button></div>
-<div id="aboutBox">Created by Theshmil & Sofa ❤️<br><br><button onclick="closeAbout()">Close</button></div>
-
+<canvas id="gameCanvas" width="500" height="500"></canvas>
 <script>
-const canvas=document.getElementById('gameCanvas');
-const ctx=canvas.getContext('2d');
-let striker={x:200,y:360,r:12,vx:0,vy:0};  // bigger striker
-let pucks=[];
-let dragging=false, dragStart=null, dragEnd=null;
-let mode='';
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
-function initPucks(){
-  pucks=[];
-  const pos=[{x:200,y:200},{x:215,y:200},{x:185,y:200},{x:200,y:215},{x:200,y:185},{x:215,y:215},{x:185,y:185},{x:215,y:185},{x:185,y:215}];
-  pos.forEach((p,i)=>pucks.push({x:p.x,y:p.y,r:10,color:i==0?'red':i%2==0?'white':'black',vx:0,vy:0})); // bigger pucks
+let striker = { x: 250, y: 450, radius: 12, dx: 0, dy: 0, color: "#222", aiming: false };
+let pucks = [];
+let dragging = false;
+let dragStart = null;
+let guideLine = null;
+
+function initBoard() {
+  pucks = [];
+  const center = { x: 250, y: 250 };
+  const radius = 14;
+  // Add red puck (queen)
+  pucks.push({ x: center.x, y: center.y, radius, color: "red", dx: 0, dy: 0 });
+  // Add black pucks
+  for (let i = 0; i < 4; i++)
+    pucks.push({ x: center.x + (i - 1.5) * 30, y: center.y - 30, radius, color: "black", dx: 0, dy: 0 });
+  // Add white pucks
+  for (let i = 0; i < 4; i++)
+    pucks.push({ x: center.x + (i - 1.5) * 30, y: center.y + 30, radius, color: "white", dx: 0, dy: 0 });
+  striker.x = 250; striker.y = 450;
+  striker.dx = striker.dy = 0;
 }
 
-function restartGame(){
-  striker.x=200; striker.y=360; striker.vx=0; striker.vy=0;
-  initPucks();
-  document.getElementById('winMessage').style.display='none';
-}
-
-function startGame(selected){
-  mode=selected;
-  document.getElementById('menu').style.display='none';
-  canvas.style.display='block';
-  restartGame();
-}
-
-function showAbout(){
-  document.getElementById('aboutBox').style.display='block';
-}
-function closeAbout(){
-  document.getElementById('aboutBox').style.display='none';
-}
-
-function getPos(e){
-  const rect=canvas.getBoundingClientRect();
-  if(e.touches) e=e.touches[0];
-  return {x:e.clientX-rect.left,y:e.clientY-rect.top};
-}
-
-canvas.addEventListener('mousedown',e=>{
-  let pos=getPos(e);
-  if(Math.hypot(pos.x-striker.x,pos.y-striker.y)<striker.r+10){
-    dragging=true; dragStart=pos; dragEnd=pos;
-  }
-});
-canvas.addEventListener('mousemove',e=>{if(dragging) dragEnd=getPos(e);});
-canvas.addEventListener('mouseup',e=>{if(dragging){shoot();} dragging=false;});
-canvas.addEventListener('touchstart',e=>{
-  let pos=getPos(e);
-  if(Math.hypot(pos.x-striker.x,pos.y-striker.y)<striker.r+10){
-    dragging=true; dragStart=pos; dragEnd=pos;
-  }
-});
-canvas.addEventListener('touchmove',e=>{if(dragging){dragEnd=getPos(e); e.preventDefault();}});
-canvas.addEventListener('touchend',e=>{if(dragging){shoot();} dragging=false;});
-
-function shoot(){
-  const dx=dragEnd.x-dragStart.x, dy=dragEnd.y-dragStart.y;
-  const len=Math.hypot(dx,dy);
-  if(len>5){
-    striker.vx=-(dx/len)*6;
-    striker.vy=-(dy/len)*6;
+function drawBoard() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Draw pockets
+  let pocketSize = 30;
+  const pockets = [
+    [0,0],[500,0],[0,500],[500,500]
+  ];
+  ctx.fillStyle = "#000";
+  pockets.forEach(([x,y]) => ctx.beginPath(), ctx.arc(x, y, pocketSize, 0, Math.PI*2), ctx.fill());
+  // Draw guide line
+  if (dragging && dragStart) {
+    ctx.strokeStyle = "rgba(255,255,255,0.6)";
+    ctx.beginPath();
+    ctx.moveTo(striker.x, striker.y);
+    ctx.lineTo(guideLine.x, guideLine.y);
+    ctx.stroke();
   }
 }
 
-function collide(a,b){
-  let dx=b.x - a.x, dy=b.y - a.y;
-  let dist=Math.hypot(dx,dy);
-  if(dist< a.r+b.r){
-    let nx=dx/dist, ny=dy/dist;
-    let p=2*((a.vx*nx+a.vy*ny)-(b.vx*nx+b.vy*ny))/(1+1);
-    a.vx -= p*nx; a.vy -= p*ny;
-    b.vx += p*nx; b.vy += p*ny;
-
-    let overlap=(a.r+b.r-dist)/2;
-    a.x -= nx*overlap; a.y -= ny*overlap;
-    b.x += nx*overlap; b.y += ny*overlap;
-  }
+function drawPuck(p) {
+  const gradient = ctx.createRadialGradient(p.x - p.radius/3, p.y - p.radius/3, p.radius/4, p.x, p.y, p.radius);
+  gradient.addColorStop(0, "white");
+  gradient.addColorStop(1, p.color);
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2);
+  ctx.fill();
 }
 
-function physics(){
-  [striker,...pucks].forEach(obj=>{
-    obj.x+=obj.vx; obj.y+=obj.vy;
-    obj.vx*=0.98; obj.vy*=0.98;
-    if(Math.abs(obj.vx)<0.05) obj.vx=0;
-    if(Math.abs(obj.vy)<0.05) obj.vy=0;
-
-    if(obj.x<obj.r){obj.x=obj.r; obj.vx*=-1;}
-    if(obj.x>400-obj.r){obj.x=400-obj.r; obj.vx*=-1;}
-    if(obj.y<obj.r){obj.y=obj.r; obj.vy*=-1;}
-    if(obj.y>400-obj.r){obj.y=400-obj.r; obj.vy*=-1;}
-  });
-
-  pucks.forEach(p=>collide(striker,p));
-  for(let i=0;i<pucks.length;i++)
-    for(let j=i+1;j<pucks.length;j++)
-      collide(pucks[i],pucks[j]);
-
-  pucks=pucks.filter(p=>{
-    if([0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<20))) return false;
-    return true;
-  });
-
-  if(pucks.length==0) document.getElementById('winMessage').style.display='block';
-}
-
-function drawBoard(){
-  ctx.fillStyle='#d2b48c'; ctx.fillRect(0,0,400,400);
-  
-  // draw more carrom style graphics
-  ctx.strokeStyle='brown'; ctx.lineWidth=2;
-  ctx.beginPath(); ctx.arc(200,200,50,0,2*Math.PI); ctx.stroke();
-  ctx.beginPath(); ctx.arc(200,200,30,0,2*Math.PI); ctx.stroke();
-  ctx.beginPath(); ctx.arc(200,200,10,0,2*Math.PI); ctx.stroke();
-  
-  ctx.beginPath(); ctx.moveTo(50,50); ctx.lineTo(350,350);
-  ctx.moveTo(350,50); ctx.lineTo(50,350); ctx.stroke();
-  
-  ctx.fillStyle='brown';
-  ctx.fillRect(190,0,20,10);
-  ctx.fillRect(190,390,20,10);
-  ctx.fillRect(0,190,10,20);
-  ctx.fillRect(390,190,10,20);
-}
-
-function draw(){
-  ctx.clearRect(0,0,400,400);
+function draw() {
   drawBoard();
-  [0,400].forEach(x=>[0,400].forEach(y=>{
-    ctx.beginPath(); ctx.arc(x,y,20,0,2*Math.PI); ctx.fillStyle='#000'; ctx.fill();
-  }));
-  pucks.forEach(p=>{
-    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,2*Math.PI); ctx.fillStyle=p.color; ctx.fill();
-  });
-  ctx.beginPath(); ctx.arc(striker.x,striker.y,striker.r,0,2*Math.PI); ctx.fillStyle='navy'; ctx.fill();
+  pucks.forEach(drawPuck);
+  drawPuck(striker);
+}
 
-  if(dragging){
-    ctx.strokeStyle='yellow';
-    ctx.beginPath(); ctx.moveTo(striker.x,striker.y); ctx.lineTo(dragEnd.x,dragEnd.y); ctx.stroke();
-    let dx=dragEnd.x-striker.x, dy=dragEnd.y-striker.y, len=Math.hypot(dx,dy);
-    if(len>0){
-      let ex=striker.x - dx/len*100, ey=striker.y - dy/len*100;
-      ctx.setLineDash([5,5]);
-      ctx.beginPath(); ctx.moveTo(striker.x,striker.y); ctx.lineTo(ex,ey); ctx.stroke();
-      ctx.setLineDash([]);
+function update() {
+  // Move pucks and striker
+  [...pucks, striker].forEach(p => {
+    p.x += p.dx;
+    p.y += p.dy;
+    // Friction
+    p.dx *= 0.98;
+    p.dy *= 0.98;
+    // Stop small movement
+    if (Math.abs(p.dx) < 0.1) p.dx = 0;
+    if (Math.abs(p.dy) < 0.1) p.dy = 0;
+    // Bounce from walls
+    if (p.x - p.radius < 0 || p.x + p.radius > 500) p.dx = -p.dx;
+    if (p.y - p.radius < 0 || p.y + p.radius > 500) p.dy = -p.dy;
+  });
+  // Simple collisions
+  for (let i=0; i<pucks.length; i++) {
+    let p = pucks[i];
+    let dx = striker.x - p.x, dy = striker.y - p.y;
+    let dist = Math.hypot(dx,dy);
+    if (dist < striker.radius + p.radius) {
+      let angle = Math.atan2(dy,dx);
+      let speed = 4;
+      p.dx = -Math.cos(angle) * speed;
+      p.dy = -Math.sin(angle) * speed;
+      striker.dx = Math.cos(angle) * speed;
+      striker.dy = Math.sin(angle) * speed;
     }
   }
+  draw();
+  requestAnimationFrame(update);
 }
 
-function loop(){
-  if(mode){ physics(); draw(); }
-  requestAnimationFrame(loop);
+canvas.addEventListener("mousedown", e => {
+  dragging = true;
+  dragStart = { x: e.offsetX, y: e.offsetY };
+});
+canvas.addEventListener("mousemove", e => {
+  if (dragging) guideLine = { x: e.offsetX, y: e.offsetY };
+});
+canvas.addEventListener("mouseup", e => {
+  if (dragging && guideLine) {
+    let dx = guideLine.x - striker.x;
+    let dy = guideLine.y - striker.y;
+    striker.dx = dx * 0.1;
+    striker.dy = dy * 0.1;
+  }
+  dragging = false;
+  guideLine = null;
+});
+
+function startGame(mode) {
+  initBoard();
 }
-loop();
+
+startGame('local'); // default
+update();
 </script>
 </body>
 </html>
