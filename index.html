@@ -2,72 +2,61 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Carrom Game</title>
 <style>
   body {
-    margin: 0;
-    background: linear-gradient(120deg, #2c2c2c, #1a1a1a);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    background: #111;
     color: #fff;
-    font-family: 'Segoe UI', Tahoma, sans-serif;
-  }
-  h1 {
-    margin: 20px;
-    color: #f5deb3;
-    font-size: 2em;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin: 0;
   }
   canvas {
-    border: 12px solid #8b4513;
-    border-radius: 8px;
     background: #deb887;
-    display: none;
-    box-shadow: 0 0 20px #000;
+    margin-top: 10px;
+    touch-action: none;
   }
-  #score, #win {
-    font-size: 1.5em;
-    margin: 10px;
-    color: #fff;
-  }
-  #menu {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-top: 50px;
+  #menu, #win {
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #222;
+    border: 2px solid #555;
+    padding: 30px;
+    border-radius: 10px;
   }
   #menu button, #win button {
     margin: 10px;
-    padding: 15px 30px;
+    padding: 15px 25px;
     background: #fff;
     color: #000;
+    font-size: 1.2em;
     border: none;
     border-radius: 8px;
-    font-size: 1.2em;
     cursor: pointer;
-    transition: background 0.3s, color 0.3s;
   }
-  #menu button:hover, #win button:hover {
-    background: #000;
-    color: #fff;
-    border: 1px solid #fff;
+  #score {
+    margin-top: 10px;
+    font-size: 1.2em;
   }
 </style>
 </head>
 <body>
 
 <h1>Carrom Game</h1>
-
 <div id="menu">
-  <button onclick="startGame('local')">Play Local Multiplayer</button>
-  <button onclick="startGame('ai')">Play vs AI (coming soon)</button>
+  <h2>Choose Mode</h2>
+  <button onclick="startGame('local')">Local Multiplayer</button>
+  <button onclick="startGame('ai')">Play vs AI</button>
 </div>
 
-<div id="score" style="display:none;">Score: 0</div>
-<canvas id="canvas" width="400" height="400"></canvas>
-<div id="win" style="display:none;">
-  <p>🎉 You Win! 🎉</p>
+<canvas id="canvas" width="400" height="400" style="display:none"></canvas>
+<div id="score" style="display:none">Score: 0</div>
+
+<div id="win" style="display:none">
+  <h2>You Win!</h2>
   <button onclick="restartGame()">Restart</button>
 </div>
 
@@ -111,28 +100,46 @@ function restartGame(){
   startGame(gameMode);
 }
 
-canvas.onmousedown = e => {
-  if(Math.hypot(e.offsetX - striker.x, e.offsetY - striker.y) < striker.radius+10){
+// Support mouse and touch
+function getPos(e){
+  if(e.touches) return { x: e.touches[0].clientX - canvas.getBoundingClientRect().left, y: e.touches[0].clientY - canvas.getBoundingClientRect().top };
+  else return { x: e.offsetX, y: e.offsetY };
+}
+
+canvas.addEventListener('mousedown', startDrag);
+canvas.addEventListener('mousemove', dragMove);
+canvas.addEventListener('mouseup', endDrag);
+canvas.addEventListener('touchstart', startDrag, {passive: false});
+canvas.addEventListener('touchmove', dragMove, {passive: false});
+canvas.addEventListener('touchend', endDrag);
+
+function startDrag(e){
+  e.preventDefault();
+  const pos = getPos(e);
+  if(Math.hypot(pos.x - striker.x, pos.y - striker.y) < striker.radius+10){
     dragging = true;
-    dragStart = { x: e.offsetX, y: e.offsetY };
+    dragStart = pos;
   }
-};
-canvas.onmousemove = e => {
+}
+function dragMove(e){
   if(dragging){
-    dragStart = { x: e.offsetX, y: e.offsetY };
+    e.preventDefault();
+    dragStart = getPos(e);
   }
-};
-canvas.onmouseup = e => {
+}
+function endDrag(e){
   if(dragging){
+    e.preventDefault();
     dragging = false;
-    let dx = striker.x - e.offsetX;
-    let dy = striker.y - e.offsetY;
+    const pos = getPos(e);
+    let dx = striker.x - pos.x;
+    let dy = striker.y - pos.y;
     let length = Math.hypot(dx, dy);
-    let force = Math.min(length/10, 6); // limit max speed
+    let force = Math.min(length/10, 6);
     striker.dx = (dx/length)*force;
     striker.dy = (dy/length)*force;
   }
-};
+}
 
 function collide(b1, b2){
   let dx=b2.x-b1.x;
@@ -199,7 +206,6 @@ function update() {
 
 function drawBoard(){
   ctx.clearRect(0,0,400,400);
-
   ctx.fillStyle='#deb887';
   ctx.fillRect(0,0,400,400);
 
@@ -261,6 +267,5 @@ function loop(){
   }
 }
 </script>
-
 </body>
 </html>
