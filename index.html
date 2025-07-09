@@ -7,26 +7,18 @@
 <style>
   body {
     margin: 0;
-    background: #000;
-    font-family: sans-serif;
+    background: #111;
     color: #fff;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  h1 {
-    margin: 10px;
+    font-family: sans-serif;
+    text-align: center;
   }
   canvas {
-    background: #deb887;
+    background: #d2b48c;
     border: 8px solid #fff;
     border-radius: 20px;
     touch-action: none;
   }
   #menu {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
     margin-top: 50px;
   }
   #menu button {
@@ -42,6 +34,8 @@
   #winMessage {
     position: absolute;
     top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     background: rgba(0,0,0,0.8);
     padding: 20px;
     border-radius: 10px;
@@ -51,7 +45,6 @@
 </style>
 </head>
 <body>
-
 <h1>Carrom Pool</h1>
 <div id="menu">
   <button onclick="startGame('local')">Local Multiplayer</button>
@@ -134,49 +127,52 @@ function shootStriker(){
   const dy=dragEnd.y - dragStart.y;
   const len=Math.hypot(dx,dy);
   if(len>5){
-    striker.vx=-(dx/len)*8;
-    striker.vy=-(dy/len)*8;
+    striker.vx=-(dx/len)*6;
+    striker.vy=-(dy/len)*6;
+  }
+}
+
+// collision between two circles
+function collide(a,b){
+  let dx=b.x - a.x;
+  let dy=b.y - a.y;
+  let dist=Math.hypot(dx,dy);
+  if(dist< a.r+b.r){
+    let overlap = (a.r+b.r-dist)/2;
+    let nx=dx/dist, ny=dy/dist;
+    a.x -= nx*overlap; a.y -= ny*overlap;
+    b.x += nx*overlap; b.y += ny*overlap;
+    let kx=a.vx - b.vx;
+    let ky=a.vy - b.vy;
+    let p = 2*(nx*kx+ny*ky)/2;
+    a.vx -= p*nx;
+    a.vy -= p*ny;
+    b.vx += p*nx;
+    b.vy += p*ny;
   }
 }
 
 function physics(){
-  striker.x+=striker.vx; striker.y+=striker.vy;
-  striker.vx*=0.98; striker.vy*=0.98;
-
-  pucks.forEach(p=>{
-    p.x+=p.vx; p.y+=p.vy;
-    p.vx*=0.98; p.vy*=0.98;
-  });
-
-  // striker & puck collision (fix sticking)
-  pucks.forEach(p=>{
-    let dx=striker.x - p.x;
-    let dy=striker.y - p.y;
-    let dist=Math.hypot(dx,dy);
-    if(dist< striker.r + p.r){
-      let overlap = striker.r + p.r - dist;
-      let angle=Math.atan2(dy,dx);
-      striker.x += Math.cos(angle)*overlap/2;
-      striker.y += Math.sin(angle)*overlap/2;
-      p.x -= Math.cos(angle)*overlap/2;
-      p.y -= Math.sin(angle)*overlap/2;
-
-      // exchange velocity
-      let tmpvx = striker.vx, tmpvy = striker.vy;
-      striker.vx = p.vx; striker.vy = p.vy;
-      p.vx = tmpvx; p.vy = tmpvy;
-    }
-  });
-
-  // keep in bounds
   [striker,...pucks].forEach(obj=>{
-    obj.x=Math.max(obj.r,Math.min(400-obj.r,obj.x));
-    obj.y=Math.max(obj.r,Math.min(400-obj.r,obj.y));
+    obj.x+=obj.vx; obj.y+=obj.vy;
+    obj.vx*=0.98; obj.vy*=0.98;
+
+    // bounce from walls
+    if(obj.x<obj.r||obj.x>400-obj.r) obj.vx*=-1;
+    if(obj.y<obj.r||obj.y>400-obj.r) obj.vy*=-1;
   });
 
-  // check pockets
+  // striker vs pucks
+  pucks.forEach(p=>collide(striker,p));
+
+  // puck vs puck
+  for(let i=0;i<pucks.length;i++)
+    for(let j=i+1;j<pucks.length;j++)
+      collide(pucks[i],pucks[j]);
+
+  // pockets
   pucks = pucks.filter(p=>{
-    if([0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<15))){
+    if([0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<20))){
       return false;
     }
     return true;
@@ -187,12 +183,27 @@ function physics(){
   }
 }
 
+function drawBoard(){
+  // board background already set
+  // center circle
+  ctx.beginPath(); ctx.arc(200,200,50,0,Math.PI*2);
+  ctx.strokeStyle='brown'; ctx.lineWidth=2; ctx.stroke();
+
+  // cross lines
+  ctx.strokeStyle='brown';
+  ctx.beginPath();
+  ctx.moveTo(0,0); ctx.lineTo(400,400);
+  ctx.moveTo(400,0); ctx.lineTo(0,400);
+  ctx.stroke();
+}
+
 function draw(){
   ctx.clearRect(0,0,400,400);
+  drawBoard();
 
   // draw pockets
   [0,400].forEach(x=>[0,400].forEach(y=>{
-    ctx.beginPath(); ctx.arc(x,y,15,0,Math.PI*2);
+    ctx.beginPath(); ctx.arc(x,y,20,0,Math.PI*2);
     ctx.fillStyle='#000'; ctx.fill();
   }));
 
@@ -206,27 +217,19 @@ function draw(){
   ctx.beginPath(); ctx.arc(striker.x,striker.y,striker.r,0,Math.PI*2);
   ctx.fillStyle='navy'; ctx.fill();
 
-  // drag lines
+  // drag line
   if(dragging){
     ctx.beginPath();
     ctx.moveTo(striker.x,striker.y);
     ctx.lineTo(dragEnd.x,dragEnd.y);
     ctx.strokeStyle='yellow'; ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(striker.x,striker.y);
-    let dx=dragEnd.x - striker.x;
-    let dy=dragEnd.y - striker.y;
-    ctx.lineTo(striker.x - dx, striker.y - dy);
-    ctx.strokeStyle='white'; ctx.stroke();
   }
 }
 
 function loop(){
-  if(mode) { physics(); draw(); }
+  if(mode){ physics(); draw(); }
   requestAnimationFrame(loop);
 }
-
 loop();
 </script>
 </body>
