@@ -41,7 +41,6 @@ const scoreEl = document.getElementById('score');
 
 let striker = { x: 200, y: 350, radius: 12, dx:0, dy:0, color:'navy' };
 let coins = [];
-let score = 0;
 
 // Add queen
 coins.push({ x:200, y:200, radius:10, dx:0, dy:0, color:'red' });
@@ -51,6 +50,9 @@ for(let i=0;i<9;i++){
   coins.push({ x:180+Math.random()*40, y:180+Math.random()*40, radius:10, dx:0, dy:0, color:'white' });
   coins.push({ x:180+Math.random()*40, y:180+Math.random()*40, radius:10, dx:0, dy:0, color:'#2f2f2f' });
 }
+
+let allBalls = [striker, ...coins];
+let score = 0;
 
 let aiming = false;
 let aimX=0, aimY=0;
@@ -66,8 +68,33 @@ canvas.onmouseup = e => {
   }
 };
 
+function collide(b1, b2){
+  let dx=b2.x-b1.x;
+  let dy=b2.y-b1.y;
+  let dist=Math.hypot(dx,dy);
+  let minDist=b1.radius+b2.radius;
+  if(dist<minDist && dist>0){
+    let overlap = (minDist - dist) / 2;
+    let nx = dx/dist;
+    let ny = dy/dist;
+    b1.x -= nx*overlap;
+    b1.y -= ny*overlap;
+    b2.x += nx*overlap;
+    b2.y += ny*overlap;
+
+    // swap velocities
+    let vx=b1.dx - b2.dx;
+    let vy=b1.dy - b2.dy;
+    let dot= vx*nx + vy*ny;
+    b1.dx -= dot*nx;
+    b1.dy -= dot*ny;
+    b2.dx += dot*nx;
+    b2.dy += dot*ny;
+  }
+}
+
 function update() {
-  [striker, ...coins].forEach(ball=>{
+  allBalls.forEach(ball=>{
     ball.x += ball.dx;
     ball.y += ball.dy;
     ball.dx *=0.98;
@@ -82,20 +109,12 @@ function update() {
     if(ball.y + ball.radius > 400){ ball.y=400-ball.radius; ball.dy=-ball.dy; }
   });
 
-  // Simple striker hits coins
-  coins.forEach(c=>{
-    let dx=c.x-striker.x;
-    let dy=c.y-striker.y;
-    let dist=Math.hypot(dx,dy);
-    if(dist < c.radius+striker.radius && (striker.dx!==0||striker.dy!==0)){
-      let angle = Math.atan2(dy,dx);
-      let power = Math.hypot(striker.dx,striker.dy)*0.3;
-      c.dx = Math.cos(angle)*power;
-      c.dy = Math.sin(angle)*power;
-      striker.dx *=0.6;
-      striker.dy *=0.6;
+  // Collisions between all coins
+  for(let i=0;i<allBalls.length;i++){
+    for(let j=i+1;j<allBalls.length;j++){
+      collide(allBalls[i], allBalls[j]);
     }
-  });
+  }
 
   // Check pockets
   let pockets = [[0,0],[400,0],[0,400],[400,400]];
@@ -106,6 +125,7 @@ function update() {
     });
     return !pocketed;
   });
+  allBalls = [striker, ...coins];
   scoreEl.innerText="Score: "+score;
 }
 
