@@ -7,7 +7,7 @@
 <style>
   body {
     margin: 0;
-    background: #deb887; /* light wood background */
+    background: #deb887;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -19,43 +19,76 @@
   canvas {
     border: 10px solid #8b4513;
     border-radius: 5px;
-    background: #f5deb3; /* light wooden board */
+    background: #f5deb3;
+    display: none;
   }
-  #score {
+  #score, #win, #menu {
     font-size: 1.2em;
     margin: 5px;
     color: #4b2e2e;
+  }
+  button {
+    margin: 5px;
+    padding: 10px 20px;
+    background: #8b4513;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    cursor: pointer;
+  }
+  button:hover {
+    background: #a0522d;
   }
 </style>
 </head>
 <body>
 
 <h1>🎱 Mini Carrom Game 🎱</h1>
-<div id="score">Score: 0</div>
+
+<div id="menu">
+  <button onclick="startGame('local')">Local Multiplayer</button>
+  <button onclick="startGame('ai')">Play vs AI (coming soon)</button>
+</div>
+
+<div id="score" style="display:none;">Score: 0</div>
 <canvas id="canvas" width="400" height="400"></canvas>
+<div id="win" style="display:none;">
+  <p>🎉 You Win! 🎉</p>
+  <button onclick="restartGame()">Restart</button>
+</div>
 
 <script>
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const scoreEl = document.getElementById('score');
+const menuEl = document.getElementById('menu');
+const winEl = document.getElementById('win');
 
-let striker = { x: 200, y: 350, radius: 12, dx:0, dy:0, color:'navy' };
-let coins = [];
+let striker, coins, allBalls, score, aiming, aimX, aimY, gameMode;
 
-// Add queen
-coins.push({ x:200, y:200, radius:10, dx:0, dy:0, color:'red' });
-
-// Add 9 white & 9 black coins
-for(let i=0;i<9;i++){
-  coins.push({ x:180+Math.random()*40, y:180+Math.random()*40, radius:10, dx:0, dy:0, color:'white' });
-  coins.push({ x:180+Math.random()*40, y:180+Math.random()*40, radius:10, dx:0, dy:0, color:'#2f2f2f' });
+function startGame(mode){
+  gameMode = mode;
+  score=0;
+  striker = { x: 200, y: 350, radius: 12, dx:0, dy:0, color:'navy' };
+  coins = [];
+  coins.push({ x:200, y:200, radius:10, dx:0, dy:0, color:'red' });
+  for(let i=0;i<9;i++){
+    coins.push({ x:180+Math.random()*40, y:180+Math.random()*40, radius:10, dx:0, dy:0, color:'white' });
+    coins.push({ x:180+Math.random()*40, y:180+Math.random()*40, radius:10, dx:0, dy:0, color:'#2f2f2f' });
+  }
+  allBalls = [striker, ...coins];
+  aiming = false;
+  menuEl.style.display='none';
+  winEl.style.display='none';
+  canvas.style.display='block';
+  scoreEl.style.display='block';
+  loop();
 }
 
-let allBalls = [striker, ...coins];
-let score = 0;
-
-let aiming = false;
-let aimX=0, aimY=0;
+function restartGame(){
+  startGame(gameMode);
+}
 
 canvas.onmousedown = e => { aiming = true; aimX=e.offsetX; aimY=e.offsetY; };
 canvas.onmouseup = e => {
@@ -125,35 +158,31 @@ function update() {
   });
   allBalls = [striker, ...coins];
   scoreEl.innerText="Score: "+score;
+
+  if(coins.length===0){
+    canvas.style.display='none';
+    scoreEl.style.display='none';
+    winEl.style.display='block';
+  }
 }
 
 function drawBoard(){
   ctx.clearRect(0,0,400,400);
-
-  // Outer border square
   ctx.strokeStyle='#8b4513';
   ctx.lineWidth=4;
   ctx.strokeRect(20,20,360,360);
-
-  // Inner square
   ctx.strokeStyle='#a0522d';
   ctx.lineWidth=2;
   ctx.strokeRect(60,60,280,280);
-
-  // Center circle
   ctx.beginPath();
   ctx.arc(200,200,20,0,Math.PI*2);
   ctx.stroke();
-
-  // Arrows / design lines (simple)
   ctx.beginPath();
   ctx.moveTo(200,60); ctx.lineTo(200,80);
   ctx.moveTo(200,340); ctx.lineTo(200,320);
   ctx.moveTo(60,200); ctx.lineTo(80,200);
   ctx.moveTo(340,200); ctx.lineTo(320,200);
   ctx.stroke();
-
-  // Pockets
   ctx.fillStyle='black';
   [[0,0],[400,0],[0,400],[400,400]].forEach(p=>{
     ctx.beginPath();
@@ -185,11 +214,12 @@ function draw(){
 }
 
 function loop(){
-  update();
-  draw();
-  requestAnimationFrame(loop);
+  if(coins.length>0){
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
 }
-loop();
 </script>
 
 </body>
