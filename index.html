@@ -2,71 +2,25 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Carrom Game 🎱</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🎱 Carrom Game 🎱</title>
 <style>
   body {
     background: #f7e7ce;
     font-family: 'Comic Sans MS', cursive, sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
     margin: 0;
-  }
-  header {
-    background: #8b4513;
-    width: 100%;
-    padding: 10px;
     text-align: center;
   }
-  header h1 {
-    color: white;
-    margin: 0;
-  }
-  .menu {
-    margin: 20px;
-  }
-  .menu button {
-    background: #cc6600;
-    color: white;
-    font-size: 1em;
-    padding: 10px 20px;
-    margin: 5px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-  .menu button:hover {
-    background: #a0522d;
-  }
-  .board {
-    width: 300px;
-    height: 300px;
+  canvas {
     background: #deb887;
     border: 10px solid #8b4513;
     border-radius: 20px;
-    position: relative;
+    margin-top: 20px;
   }
-  .piece {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    position: absolute;
-  }
-  .red {
-    background: red;
-    top: 135px;
-    left: 135px;
-  }
-  .white {
-    background: white;
-    top: 50px;
-    left: 50px;
-  }
-  .black {
-    background: black;
-    top: 200px;
-    left: 200px;
+  header {
+    background: #8b4513;
+    color: white;
+    padding: 10px;
   }
 </style>
 </head>
@@ -74,18 +28,121 @@
 <header>
   <h1>🎱 Carrom Game 🎱</h1>
 </header>
+<canvas id="gameCanvas" width="400" height="400"></canvas>
 
-<div class="menu">
-  <button onclick="alert('Start game coming soon!')">Start Game</button>
-  <button onclick="alert('Strike all your pieces into pockets!')">How to Play</button>
-  <button onclick="alert('Made with ❤️ by Theshmil')">About</button>
-</div>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
 
-<div class="board">
-  <div class="piece red"></div>
-  <div class="piece white"></div>
-  <div class="piece black"></div>
-</div>
-<p>More features coming soon!</p>
+let striker = { x: canvas.width/2, y: canvas.height-30, radius: 12, dx: 0, dy: 0 };
+let coins = [
+  {x: canvas.width/2, y: canvas.height/2, radius: 8, color: "black", dx:0, dy:0},
+  {x: canvas.width/2+20, y: canvas.height/2, radius: 8, color: "white", dx:0, dy:0},
+  {x: canvas.width/2-20, y: canvas.height/2, radius: 8, color: "white", dx:0, dy:0},
+  {x: canvas.width/2, y: canvas.height/2+20, radius: 8, color: "black", dx:0, dy:0}
+];
+let aiming = false;
+let aimX=0, aimY=0;
+
+// Draw everything
+function drawBoard() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw pockets
+  let pocketRadius = 15;
+  let pockets = [
+    {x: 0, y: 0},
+    {x: canvas.width, y: 0},
+    {x: 0, y: canvas.height},
+    {x: canvas.width, y: canvas.height}
+  ];
+  ctx.fillStyle = "black";
+  pockets.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, pocketRadius, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Draw center circle
+  ctx.strokeStyle = "red";
+  ctx.beginPath();
+  ctx.arc(canvas.width/2, canvas.height/2, 40, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Draw coins
+  coins.forEach(c => {
+    ctx.fillStyle = c.color;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, c.radius, 0, Math.PI*2);
+    ctx.fill();
+  });
+
+  // Draw striker
+  ctx.fillStyle = "red";
+  ctx.beginPath();
+  ctx.arc(striker.x, striker.y, striker.radius, 0, Math.PI*2);
+  ctx.fill();
+
+  // Draw aiming line
+  if (aiming) {
+    ctx.strokeStyle = "blue";
+    ctx.beginPath();
+    ctx.moveTo(striker.x, striker.y);
+    ctx.lineTo(aimX, aimY);
+    ctx.stroke();
+  }
+}
+
+// Move coins and striker
+function update() {
+  [striker, ...coins].forEach(ball => {
+    ball.x += ball.dx;
+    ball.y += ball.dy;
+    ball.dx *= 0.98; // friction
+    ball.dy *= 0.98;
+    if (Math.abs(ball.dx) < 0.1) ball.dx=0;
+    if (Math.abs(ball.dy) < 0.1) ball.dy=0;
+  });
+
+  // Simple collision: striker hits coins
+  coins.forEach(c => {
+    let dx = c.x - striker.x;
+    let dy = c.y - striker.y;
+    let dist = Math.hypot(dx, dy);
+    if (dist < c.radius + striker.radius) {
+      c.dx = dx*0.2;
+      c.dy = dy*0.2;
+      striker.dx = -dx*0.1;
+      striker.dy = -dy*0.1;
+    }
+  });
+}
+
+// Game loop
+function loop() {
+  update();
+  drawBoard();
+  requestAnimationFrame(loop);
+}
+loop();
+
+// Mouse control
+canvas.addEventListener("mousedown", e => {
+  aiming = true;
+  aimX = e.offsetX;
+  aimY = e.offsetY;
+});
+canvas.addEventListener("mousemove", e => {
+  if (aiming) {
+    aimX = e.offsetX;
+    aimY = e.offsetY;
+  }
+});
+canvas.addEventListener("mouseup", e => {
+  aiming = false;
+  striker.dx = (striker.x - aimX)*0.1;
+  striker.dy = (striker.y - aimY)*0.1;
+});
+</script>
 </body>
 </html>
