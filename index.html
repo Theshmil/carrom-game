@@ -140,8 +140,20 @@ function draw(){
     ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,2*Math.PI); ctx.fillStyle=p.color; ctx.fill();
   });
   ctx.beginPath(); ctx.arc(striker.x,striker.y,striker.r,0,2*Math.PI); ctx.fillStyle='navy'; ctx.fill();
+
   if(dragging){
-    ctx.strokeStyle='yellow'; ctx.beginPath(); ctx.moveTo(striker.x,striker.y); ctx.lineTo(dragEnd.x,dragEnd.y); ctx.stroke();
+    // short drag line
+    ctx.strokeStyle='yellow';
+    ctx.beginPath(); ctx.moveTo(striker.x,striker.y); ctx.lineTo(dragEnd.x,dragEnd.y); ctx.stroke();
+    
+    // long guide line
+    let dx=dragEnd.x - striker.x, dy=dragEnd.y - striker.y, len=Math.hypot(dx,dy);
+    if(len>0){
+      let ex=striker.x - dx/len*100, ey=striker.y - dy/len*100;
+      ctx.setLineDash([5,5]);
+      ctx.beginPath(); ctx.moveTo(striker.x,striker.y); ctx.lineTo(ex,ey); ctx.stroke();
+      ctx.setLineDash([]);
+    }
   }
 }
 
