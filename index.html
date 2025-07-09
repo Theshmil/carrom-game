@@ -7,7 +7,7 @@
 <style>
   body {
     margin: 0;
-    background: #111;
+    background: #000;
     font-family: sans-serif;
     color: #fff;
     display: flex;
@@ -18,7 +18,7 @@
     margin: 10px;
   }
   canvas {
-    background: #deb887; /* Light brown carrom board color */
+    background: #deb887; /* Carrom board color */
     border: 8px solid #fff;
     border-radius: 20px;
     touch-action: none;
@@ -30,14 +30,11 @@
     margin: 5px;
     padding: 10px 20px;
     font-size: 18px;
-    background: #333;
-    color: #fff;
+    background: #fff;
+    color: #000;
     border: none;
     border-radius: 8px;
-  }
-  #powerSlider {
-    width: 200px;
-    margin: 10px;
+    cursor: pointer;
   }
   #winMessage {
     position: absolute;
@@ -55,14 +52,9 @@
 <h1>Carrom Pool</h1>
 <div id="menu">
   <button onclick="restartGame()">Restart</button>
-  Power: <input type="range" id="powerSlider" min="5" max="20" value="10">
 </div>
 <canvas id="gameCanvas" width="400" height="400"></canvas>
 <div id="winMessage">🎉 You Win! <button onclick="restartGame()">Play Again</button></div>
-
-<audio id="strikeSound" src="https://www.myinstants.com/media/sounds/button-10.mp3"></audio>
-<audio id="pocketSound" src="https://www.myinstants.com/media/sounds/metal-clank.mp3"></audio>
-<audio id="winSound" src="https://www.myinstants.com/media/sounds/success-fanfare-trumpets.mp3"></audio>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
@@ -71,24 +63,22 @@ let striker = {x: 200, y: 360, r: 10, vx: 0, vy: 0};
 let pucks = [];
 let dragging = false;
 let dragStart = null;
-let power = 10;
-
-document.getElementById('powerSlider').oninput = e => power = parseInt(e.target.value);
+let dragEnd = null;
 
 function initPucks() {
   pucks = [];
   const positions = [
-    {x: 200, y: 200}, {x: 215, y: 200}, {x: 185, y: 200},
-    {x: 200, y: 215}, {x: 200, y: 185}, {x: 215, y: 215},
-    {x: 185, y: 185}, {x: 215, y: 185}, {x: 185, y: 215}
+    {x:200,y:200},{x:215,y:200},{x:185,y:200},
+    {x:200,y:215},{x:200,y:185},{x:215,y:215},
+    {x:185,y:185},{x:215,y:185},{x:185,y:215}
   ];
-  for (let i=0; i<positions.length; i++) {
-    pucks.push({x: positions[i].x, y: positions[i].y, r:8, color: (i==0?'red': (i%2==0?'white':'black')), vx:0, vy:0});
-  }
+  positions.forEach((pos,i)=>{
+    pucks.push({x:pos.x,y:pos.y,r:8,color:(i==0?'red':i%2==0?'white':'black'),vx:0,vy:0});
+  });
 }
 
-function restartGame() {
-  striker.x = 200; striker.y = 360; striker.vx=0; striker.vy=0;
+function restartGame(){
+  striker.x=200; striker.y=360; striker.vx=0; striker.vy=0;
   initPucks();
   document.getElementById('winMessage').style.display='none';
 }
@@ -97,117 +87,126 @@ function isOnStriker(x,y){
   return Math.hypot(x - striker.x, y - striker.y) < striker.r+10;
 }
 
-// Mouse & touch support
-function getPos(e) {
-  const rect = canvas.getBoundingClientRect();
-  if(e.touches) e = e.touches[0];
+function getPos(e){
+  const rect=canvas.getBoundingClientRect();
+  if(e.touches) e=e.touches[0];
   return {x: e.clientX - rect.left, y: e.clientY - rect.top};
 }
 
-canvas.addEventListener('mousedown', e=>{
-  const pos = getPos(e);
-  if (isOnStriker(pos.x,pos.y)) { dragging = true; dragStart = pos; }
+// Mouse & touch events
+canvas.addEventListener('mousedown',e=>{
+  let pos=getPos(e);
+  if(isOnStriker(pos.x,pos.y)){ dragging=true; dragStart=pos; dragEnd=pos; }
 });
-canvas.addEventListener('mousemove', e=>{ if(dragging) dragStart=getPos(e); });
-canvas.addEventListener('mouseup', e=>{
-  if(dragging) {
-    const dx = dragStart.x - striker.x;
-    const dy = dragStart.y - striker.y;
-    const len = Math.hypot(dx, dy);
-    striker.vx = (dx/len)*power;
-    striker.vy = (dy/len)*power;
-    document.getElementById('strikeSound').play();
-  }
-  dragging=false;
+canvas.addEventListener('mousemove',e=>{
+  if(dragging) dragEnd=getPos(e);
 });
-
-// Touch
-canvas.addEventListener('touchstart', e=>{
-  const pos = getPos(e);
-  if (isOnStriker(pos.x,pos.y)) { dragging=true; dragStart=pos; }
-});
-canvas.addEventListener('touchmove', e=>{
-  if(dragging) { dragStart=getPos(e); e.preventDefault(); }
-});
-canvas.addEventListener('touchend', e=>{
-  if(dragging) {
-    const dx = dragStart.x - striker.x;
-    const dy = dragStart.y - striker.y;
-    const len = Math.hypot(dx, dy);
-    striker.vx = (dx/len)*power;
-    striker.vy = (dy/len)*power;
-    document.getElementById('strikeSound').play();
-  }
-  dragging=false;
-});
-
-function draw() {
-  ctx.clearRect(0,0,400,400);
-
-  // draw pockets
-  [0,400].forEach(x=>[0,400].forEach(y=>{
-    ctx.beginPath();
-    ctx.arc(x,y,15,0,Math.PI*2);
-    ctx.fillStyle='#000'; ctx.fill();
-  }));
-
-  // draw pucks
-  pucks.forEach(p=>{
-    ctx.beginPath();
-    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-    ctx.fillStyle=p.color; ctx.fill();
-  });
-
-  // draw striker
-  ctx.beginPath();
-  ctx.arc(striker.x,striker.y,striker.r,0,Math.PI*2);
-  ctx.fillStyle='navy'; ctx.fill();
-
-  // aiming line
+canvas.addEventListener('mouseup',e=>{
   if(dragging){
-    ctx.beginPath();
-    ctx.moveTo(striker.x,striker.y);
-    ctx.lineTo(dragStart.x,dragStart.y);
-    ctx.strokeStyle='yellow'; ctx.stroke();
+    shootStriker();
+  }
+  dragging=false;
+});
+canvas.addEventListener('touchstart',e=>{
+  let pos=getPos(e);
+  if(isOnStriker(pos.x,pos.y)){ dragging=true; dragStart=pos; dragEnd=pos; }
+});
+canvas.addEventListener('touchmove',e=>{
+  if(dragging){ dragEnd=getPos(e); e.preventDefault(); }
+});
+canvas.addEventListener('touchend',e=>{
+  if(dragging){
+    shootStriker();
+  }
+  dragging=false;
+});
+
+function shootStriker(){
+  const dx=dragEnd.x - dragStart.x;
+  const dy=dragEnd.y - dragStart.y;
+  const len=Math.hypot(dx,dy);
+  if(len>5){
+    // striker stays in place, shoot in opposite dir
+    striker.vx=-(dx/len)*8;
+    striker.vy=-(dy/len)*8;
   }
 }
 
-function physics() {
-  striker.x += striker.vx; striker.y += striker.vy;
+function physics(){
+  striker.x+=striker.vx; striker.y+=striker.vy;
   striker.vx*=0.98; striker.vy*=0.98;
+
   pucks.forEach(p=>{
     p.x+=p.vx; p.y+=p.vy;
     p.vx*=0.98; p.vy*=0.98;
   });
 
-  // collisions striker with pucks
+  // striker & pucks collision
   pucks.forEach(p=>{
-    const dx = striker.x - p.x, dy = striker.y - p.y;
-    const dist = Math.hypot(dx, dy);
+    let dx=striker.x - p.x;
+    let dy=striker.y - p.y;
+    let dist=Math.hypot(dx,dy);
     if(dist< striker.r + p.r){
-      const angle = Math.atan2(dy, dx);
-      const speed = Math.hypot(striker.vx,striker.vy);
-      p.vx = Math.cos(angle)*speed; p.vy = Math.sin(angle)*speed;
+      let angle=Math.atan2(dy,dx);
+      let totalSpeed=Math.hypot(striker.vx,striker.vy);
+      p.vx=Math.cos(angle)*totalSpeed;
+      p.vy=Math.sin(angle)*totalSpeed;
       striker.vx*=-0.5; striker.vy*=-0.5;
     }
   });
 
-  // check pocket
+  // keep in bounds
+  [striker,...pucks].forEach(obj=>{
+    obj.x=Math.max(obj.r,Math.min(400-obj.r,obj.x));
+    obj.y=Math.max(obj.r,Math.min(400-obj.r,obj.y));
+  });
+
+  // check pockets
   pucks = pucks.filter(p=>{
-    if ([0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<15))){
-      document.getElementById('pocketSound').play(); return false;
+    if([0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<15))){
+      return false;
     }
     return true;
   });
 
-  if(pucks.length==0) {
+  if(pucks.length==0){
     document.getElementById('winMessage').style.display='block';
-    document.getElementById('winSound').play();
   }
+}
 
-  // bounds
-  striker.x=Math.max(striker.r,Math.min(400-striker.r,striker.x));
-  striker.y=Math.max(striker.r,Math.min(400-striker.r,striker.y));
+function draw(){
+  ctx.clearRect(0,0,400,400);
+
+  // draw pockets
+  [0,400].forEach(x=>[0,400].forEach(y=>{
+    ctx.beginPath(); ctx.arc(x,y,15,0,Math.PI*2);
+    ctx.fillStyle='#000'; ctx.fill();
+  }));
+
+  // draw pucks
+  pucks.forEach(p=>{
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle=p.color; ctx.fill();
+  });
+
+  // draw striker
+  ctx.beginPath(); ctx.arc(striker.x,striker.y,striker.r,0,Math.PI*2);
+  ctx.fillStyle='navy'; ctx.fill();
+
+  // drag lines
+  if(dragging){
+    ctx.beginPath();
+    ctx.moveTo(striker.x,striker.y);
+    ctx.lineTo(dragEnd.x,dragEnd.y);
+    ctx.strokeStyle='yellow'; ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(striker.x,striker.y);
+    let dx=dragEnd.x - striker.x;
+    let dy=dragEnd.y - striker.y;
+    ctx.lineTo(striker.x - dx, striker.y - dy);
+    ctx.strokeStyle='white'; ctx.stroke();
+  }
 }
 
 function loop(){
