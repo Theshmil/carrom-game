@@ -53,7 +53,7 @@
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-let striker, pucks, dragging = false, dragStart = null, guideLine = null, score = 0;
+let striker, pucks, isDragging = false, dragStart = null, dragEnd = null, score = 0;
 
 function startGame(mode) {
   striker = { x: 250, y: 450, radius: 12, dx: 0, dy: 0, color: "#222" };
@@ -81,13 +81,14 @@ function drawBoard() {
   // Border & baselines
   ctx.strokeStyle="#5d4037"; ctx.lineWidth=4; ctx.strokeRect(40,40,420,420);
   ctx.lineWidth=2; ctx.strokeRect(60,60,380,380);
-  // Center circle & star
+  // Center circle
   ctx.beginPath(); ctx.arc(250,250,30,0,Math.PI*2); ctx.stroke();
   ctx.fillStyle="#b71c1c"; ctx.beginPath(); ctx.arc(250,250,5,0,Math.PI*2); ctx.fill();
   // Guide line
-  if (dragging && guideLine) {
-    ctx.strokeStyle="rgba(255,255,255,0.6)";
-    ctx.beginPath(); ctx.moveTo(striker.x,striker.y); ctx.lineTo(guideLine.x,guideLine.y); ctx.stroke();
+  if (isDragging && dragStart && dragEnd) {
+    ctx.strokeStyle="rgba(255,255,255,0.7)";
+    ctx.beginPath(); ctx.moveTo(striker.x,striker.y);
+    ctx.lineTo(dragEnd.x,dragEnd.y); ctx.stroke();
   }
 }
 
@@ -103,28 +104,30 @@ function draw() {
 }
 
 function updatePhysics() {
-  // Update positions
   [...pucks, striker].forEach(p=>{
     p.x += p.dx; p.y += p.dy;
     p.dx *= 0.98; p.dy *=0.98;
-    if (Math.abs(p.dx)<0.1) p.dx=0;
-    if (Math.abs(p.dy)<0.1) p.dy=0;
-    // Bounce walls
-    if (p.x - p.radius <0 || p.x + p.radius>500) p.dx=-p.dx;
-    if (p.y - p.radius <0 || p.y + p.radius>500) p.dy=-p.dy;
+    if (Math.abs(p.dx)<0.05) p.dx=0;
+    if (Math.abs(p.dy)<0.05) p.dy=0;
+    // Walls
+    if (p.x - p.radius <0 || p.x + p.radius>500) { p.x=Math.max(p.radius,Math.min(500-p.radius,p.x)); p.dx=-p.dx; }
+    if (p.y - p.radius <0 || p.y + p.radius>500) { p.y=Math.max(p.radius,Math.min(500-p.radius,p.y)); p.dy=-p.dy; }
   });
   // Collisions
-  for (let i=0;i<pucks.length;i++) {
-    let p=pucks[i];
-    let dx=striker.x-p.x, dy=striker.y-p.y;
-    let dist=Math.hypot(dx,dy);
-    if (dist<striker.radius+p.radius) {
-      // Simple elastic collision
-      let angle=Math.atan2(dy,dx);
-      let totalSpeed=Math.hypot(striker.dx,striker.dy);
-      p.dx = Math.cos(angle)*totalSpeed*0.5;
-      p.dy = Math.sin(angle)*totalSpeed*0.5;
-      striker.dx *= -0.5; striker.dy *= -0.5;
+  let all = [striker,...pucks];
+  for (let i=0;i<all.length;i++) {
+    for (let j=i+1;j<all.length;j++) {
+      let a=all[i], b=all[j];
+      let dx=b.x-a.x, dy=b.y-a.y, dist=Math.hypot(dx,dy);
+      if (dist<a.radius+b.radius) {
+        let overlap=(a.radius+b.radius)-dist;
+        let nx=dx/dist, ny=dy/dist;
+        a.x -= nx*overlap/2; a.y -= ny*overlap/2;
+        b.x += nx*overlap/2; b.y += ny*overlap/2;
+        // exchange speeds
+        let tx = a.dx; a.dx = b.dx; b.dx = tx;
+        let ty = a.dy; a.dy = b.dy; b.dy = ty;
+      }
     }
   }
   // Pocket detection
@@ -148,14 +151,23 @@ function gameLoop() {
 }
 
 // Controls
-canvas.addEventListener("mousedown", e=>{dragging=true; guideLine={x:e.offsetX,y:e.offsetY};});
-canvas.addEventListener("mousemove", e=>{if(dragging)guideLine={x:e.offsetX,y:e.offsetY};});
+canvas.addEventListener("mousedown", e=>{
+  isDragging=true;
+  dragStart={x:e.offsetX,y:e.offsetY};
+  dragEnd=dragStart;
+});
+canvas.addEventListener("mousemove", e=>{
+  if(isDragging) dragEnd={x:e.offsetX,y:e.offsetY};
+});
 canvas.addEventListener("mouseup", e=>{
-  if (dragging && guideLine) {
-    let dx=guideLine.x-striker.x, dy=guideLine.y-striker.y;
-    striker.dx=dx*0.1; striker.dy=dy*0.1;
+  if (isDragging && dragStart && dragEnd) {
+    let dx=dragStart.x - dragEnd.x;
+    let dy=dragStart.y - dragEnd.y;
+    striker.dx=dx*0.15;
+    striker.dy=dy*0.15;
   }
-  dragging=false; guideLine=null;
+  isDragging=false;
+  dragStart=dragEnd=null;
 });
 
 startGame('local');
