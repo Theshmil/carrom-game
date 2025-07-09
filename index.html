@@ -22,7 +22,7 @@
   canvas {
     border: 12px solid #8b4513;
     border-radius: 8px;
-    background: #deb887; /* light wood color */
+    background: #deb887;
     display: none;
     box-shadow: 0 0 20px #000;
   }
@@ -78,12 +78,12 @@ const scoreEl = document.getElementById('score');
 const menuEl = document.getElementById('menu');
 const winEl = document.getElementById('win');
 
-let striker, coins, allBalls, score, aiming, aimX, aimY, gameMode;
+let striker, coins, allBalls, score, dragging, dragStart, gameMode;
 
 function startGame(mode){
   gameMode = mode;
   score=0;
-  striker = { x: 200, y: 350, radius: 12, dx:0, dy:0, color:'#fff' };
+  striker = { x: 200, y: 350, radius: 12, dx:0, dy:0, color:'#fff', border:'#003366' };
   coins = [];
 
   // Red coin in center
@@ -99,7 +99,7 @@ function startGame(mode){
   }
 
   allBalls = [striker, ...coins];
-  aiming = false;
+  dragging = false;
   menuEl.style.display='none';
   winEl.style.display='none';
   canvas.style.display='block';
@@ -111,16 +111,26 @@ function restartGame(){
   startGame(gameMode);
 }
 
-canvas.onmousedown = e => { aiming = true; aimX=e.offsetX; aimY=e.offsetY; };
+canvas.onmousedown = e => {
+  if(Math.hypot(e.offsetX - striker.x, e.offsetY - striker.y) < striker.radius+10){
+    dragging = true;
+    dragStart = { x: e.offsetX, y: e.offsetY };
+  }
+};
+canvas.onmousemove = e => {
+  if(dragging){
+    dragStart = { x: e.offsetX, y: e.offsetY };
+  }
+};
 canvas.onmouseup = e => {
-  if(aiming){
-    aiming=false;
-    let dx = e.offsetX - striker.x;
-    let dy = e.offsetY - striker.y;
-    let angle = Math.atan2(dy, dx);
-    let fixedSpeed = 6;
-    striker.dx = Math.cos(angle)*fixedSpeed;
-    striker.dy = Math.sin(angle)*fixedSpeed;
+  if(dragging){
+    dragging = false;
+    let dx = striker.x - e.offsetX;
+    let dy = striker.y - e.offsetY;
+    let length = Math.hypot(dx, dy);
+    let force = Math.min(length/10, 6); // limit max speed
+    striker.dx = (dx/length)*force;
+    striker.dy = (dy/length)*force;
   }
 };
 
@@ -190,11 +200,9 @@ function update() {
 function drawBoard(){
   ctx.clearRect(0,0,400,400);
 
-  // Wood-like base color
   ctx.fillStyle='#deb887';
   ctx.fillRect(0,0,400,400);
 
-  // Borders
   ctx.strokeStyle='#8b4513';
   ctx.lineWidth=6;
   ctx.strokeRect(10,10,380,380);
@@ -203,18 +211,15 @@ function drawBoard(){
   ctx.lineWidth=3;
   ctx.strokeRect(40,40,320,320);
 
-  // Center circle
   ctx.beginPath();
   ctx.arc(200,200,20,0,Math.PI*2);
   ctx.stroke();
 
-  // Cross lines
   ctx.beginPath();
   ctx.moveTo(200,40); ctx.lineTo(200,360);
   ctx.moveTo(40,200); ctx.lineTo(360,200);
   ctx.stroke();
 
-  // Pockets
   ctx.fillStyle='#000';
   [[0,0],[400,0],[0,400],[400,400]].forEach(p=>{
     ctx.beginPath();
@@ -235,12 +240,15 @@ function draw(){
   ctx.arc(striker.x,striker.y,striker.radius,0,Math.PI*2);
   ctx.fillStyle=striker.color;
   ctx.fill();
+  ctx.lineWidth=2;
+  ctx.strokeStyle=striker.border;
+  ctx.stroke();
 
-  if(aiming){
+  if(dragging){
     ctx.strokeStyle='cyan';
     ctx.beginPath();
     ctx.moveTo(striker.x,striker.y);
-    ctx.lineTo(aimX,aimY);
+    ctx.lineTo(dragStart.x,dragStart.y);
     ctx.stroke();
   }
 }
