@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Carrom Pool</title>
 <style>
@@ -9,7 +9,7 @@
   canvas { background:#d2b48c; border:8px solid #fff; border-radius:20px; touch-action:none; }
   #menu { margin-top:50px; }
   #menu button { margin:10px; padding:15px 30px; font-size:20px; background:#fff; color:#000; border:none; border-radius:10px; cursor:pointer; }
-  #winMessage { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.8); padding:20px; border-radius:10px; font-size:24px; display:none; }
+  #winMessage, #aboutBox { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.8); padding:20px; border-radius:10px; font-size:20px; display:none; }
 </style>
 </head>
 <body>
@@ -17,9 +17,11 @@
 <div id="menu">
   <button onclick="startGame('local')">Local Multiplayer</button>
   <button onclick="startGame('ai')">Play vs AI 🤖</button>
+  <button onclick="showAbout()">About</button>
 </div>
 <canvas id="gameCanvas" width="400" height="400" style="display:none;"></canvas>
 <div id="winMessage">🎉 You Win! <button onclick="restartGame()">Play Again</button></div>
+<div id="aboutBox">Created by Theshmil & Sofa ❤️<br><br><button onclick="closeAbout()">Close</button></div>
 
 <script>
 const canvas=document.getElementById('gameCanvas');
@@ -46,6 +48,13 @@ function startGame(selected){
   document.getElementById('menu').style.display='none';
   canvas.style.display='block';
   restartGame();
+}
+
+function showAbout(){
+  document.getElementById('aboutBox').style.display='block';
+}
+function closeAbout(){
+  document.getElementById('aboutBox').style.display='none';
 }
 
 function getPos(e){
@@ -89,7 +98,6 @@ function collide(a,b){
     a.vx -= p*nx; a.vy -= p*ny;
     b.vx += p*nx; b.vy += p*ny;
 
-    // move apart
     let overlap=(a.r+b.r-dist)/2;
     a.x -= nx*overlap; a.y -= ny*overlap;
     b.x += nx*overlap; b.y += ny*overlap;
@@ -99,25 +107,21 @@ function collide(a,b){
 function physics(){
   [striker,...pucks].forEach(obj=>{
     obj.x+=obj.vx; obj.y+=obj.vy;
-    // friction
     obj.vx*=0.98; obj.vy*=0.98;
     if(Math.abs(obj.vx)<0.05) obj.vx=0;
     if(Math.abs(obj.vy)<0.05) obj.vy=0;
 
-    // walls
     if(obj.x<obj.r){obj.x=obj.r; obj.vx*=-1;}
     if(obj.x>400-obj.r){obj.x=400-obj.r; obj.vx*=-1;}
     if(obj.y<obj.r){obj.y=obj.r; obj.vy*=-1;}
     if(obj.y>400-obj.r){obj.y=400-obj.r; obj.vy*=-1;}
   });
 
-  // collisions
   pucks.forEach(p=>collide(striker,p));
   for(let i=0;i<pucks.length;i++)
     for(let j=i+1;j<pucks.length;j++)
       collide(pucks[i],pucks[j]);
 
-  // pockets
   pucks=pucks.filter(p=>{
     if([0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<20))) return false;
     return true;
@@ -129,17 +133,11 @@ function physics(){
 function drawBoard(){
   ctx.fillStyle='#d2b48c'; ctx.fillRect(0,0,400,400);
   ctx.strokeStyle='brown'; ctx.lineWidth=2;
-
-  // center circle & designs
   ctx.beginPath(); ctx.arc(200,200,50,0,2*Math.PI); ctx.stroke();
   ctx.beginPath(); ctx.arc(200,200,30,0,2*Math.PI); ctx.stroke();
   ctx.beginPath(); ctx.arc(200,200,10,0,2*Math.PI); ctx.stroke();
-
-  // cross lines
   ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(400,400);
   ctx.moveTo(400,0); ctx.lineTo(0,400); ctx.stroke();
-
-  // side patterns
   ctx.fillStyle='brown';
   ctx.fillRect(190,0,20,10);
   ctx.fillRect(190,390,20,10);
@@ -150,25 +148,17 @@ function drawBoard(){
 function draw(){
   ctx.clearRect(0,0,400,400);
   drawBoard();
-
-  // pockets
   [0,400].forEach(x=>[0,400].forEach(y=>{
     ctx.beginPath(); ctx.arc(x,y,20,0,2*Math.PI); ctx.fillStyle='#000'; ctx.fill();
   }));
-
-  // pucks
   pucks.forEach(p=>{
     ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,2*Math.PI); ctx.fillStyle=p.color; ctx.fill();
   });
-
-  // striker
   ctx.beginPath(); ctx.arc(striker.x,striker.y,striker.r,0,2*Math.PI); ctx.fillStyle='navy'; ctx.fill();
 
-  // drag + guideline
   if(dragging){
     ctx.strokeStyle='yellow';
     ctx.beginPath(); ctx.moveTo(striker.x,striker.y); ctx.lineTo(dragEnd.x,dragEnd.y); ctx.stroke();
-
     let dx=dragEnd.x-striker.x, dy=dragEnd.y-striker.y, len=Math.hypot(dx,dy);
     if(len>0){
       let ex=striker.x - dx/len*100, ey=striker.y - dy/len*100;
