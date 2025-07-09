@@ -7,7 +7,7 @@
 <style>
   body {
     margin: 0;
-    background: #deb887; /* wooden background */
+    background: #deb887;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -21,126 +21,127 @@
     border: 10px solid #8b4513;
     border-radius: 5px;
   }
+  #score {
+    font-size: 1.2em;
+    margin: 5px;
+    color: #4b2e2e;
+  }
 </style>
 </head>
 <body>
 
 <h1>🎱 Mini Carrom Game 🎱</h1>
+<div id="score">Score: 0</div>
 <canvas id="canvas" width="400" height="400"></canvas>
 
 <script>
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
 
-// Create striker and coins
-let striker = { x: 200, y: 350, radius: 12, dx:0, dy:0, color:'black' };
+let striker = { x: 200, y: 350, radius: 12, dx:0, dy:0, color:'navy' };
 let coins = [];
+let score = 0;
 
-// Add queen (red)
-coins.push({ x: 200, y: 200, radius:10, dx:0, dy:0, color:'red' });
+// Add queen
+coins.push({ x:200, y:200, radius:10, dx:0, dy:0, color:'red' });
 
-// Add 4 white and 4 black coins around
-const positions = [
-  [180, 200], [220, 200], [200, 180], [200, 220],
-  [185, 185], [215, 215], [215, 185], [185, 215]
-];
-for(let i=0;i<8;i++){
-  coins.push({
-    x: positions[i][0],
-    y: positions[i][1],
-    radius:10,
-    dx:0, dy:0,
-    color: i<4 ? 'white' : '#2f2f2f'
-  });
+// Add 9 white & 9 black coins
+for(let i=0;i<9;i++){
+  coins.push({ x:180+Math.random()*40, y:180+Math.random()*40, radius:10, dx:0, dy:0, color:'white' });
+  coins.push({ x:180+Math.random()*40, y:180+Math.random()*40, radius:10, dx:0, dy:0, color:'#2f2f2f' });
 }
 
 let aiming = false;
 let aimX=0, aimY=0;
 
-canvas.onmousedown = e => {
-  aiming = true;
-  aimX = e.offsetX;
-  aimY = e.offsetY;
-};
+canvas.onmousedown = e => { aiming = true; aimX=e.offsetX; aimY=e.offsetY; };
 canvas.onmouseup = e => {
   if(aiming){
-    aiming = false;
+    aiming=false;
     let dx = e.offsetX - striker.x;
     let dy = e.offsetY - striker.y;
-    striker.dx = dx * 0.2;
-    striker.dy = dy * 0.2;
+    striker.dx = dx*0.2;
+    striker.dy = dy*0.2;
   }
 };
 
 function update() {
-  [striker, ...coins].forEach(ball => {
+  [striker, ...coins].forEach(ball=>{
     ball.x += ball.dx;
     ball.y += ball.dy;
-    ball.dx *= 0.98;
-    ball.dy *= 0.98;
+    ball.dx *=0.98;
+    ball.dy *=0.98;
     if(Math.abs(ball.dx)<0.05) ball.dx=0;
     if(Math.abs(ball.dy)<0.05) ball.dy=0;
 
     // Wall collision
-    if(ball.x - ball.radius < 0){
-      ball.x = ball.radius;
-      ball.dx = -ball.dx;
-    }
-    if(ball.x + ball.radius > canvas.width){
-      ball.x = canvas.width - ball.radius;
-      ball.dx = -ball.dx;
-    }
-    if(ball.y - ball.radius < 0){
-      ball.y = ball.radius;
-      ball.dy = -ball.dy;
-    }
-    if(ball.y + ball.radius > canvas.height){
-      ball.y = canvas.height - ball.radius;
-      ball.dy = -ball.dy;
-    }
+    if(ball.x - ball.radius < 0){ ball.x=ball.radius; ball.dx=-ball.dx; }
+    if(ball.x + ball.radius > 400){ ball.x=400-ball.radius; ball.dx=-ball.dx; }
+    if(ball.y - ball.radius < 0){ ball.y=ball.radius; ball.dy=-ball.dy; }
+    if(ball.y + ball.radius > 400){ ball.y=400-ball.radius; ball.dy=-ball.dy; }
   });
 
   // Simple striker hits coins
-  coins.forEach(c => {
-    let dx = c.x - striker.x;
-    let dy = c.y - striker.y;
-    let dist = Math.hypot(dx, dy);
-    if (dist < c.radius + striker.radius && (striker.dx!==0 || striker.dy!==0)) {
-      c.dx = dx*0.2;
-      c.dy = dy*0.2;
-      striker.dx *= 0.5;
-      striker.dy *= 0.5;
+  coins.forEach(c=>{
+    let dx=c.x-striker.x;
+    let dy=c.y-striker.y;
+    let dist=Math.hypot(dx,dy);
+    if(dist < c.radius+striker.radius && (striker.dx!==0||striker.dy!==0)){
+      let angle = Math.atan2(dy,dx);
+      let power = Math.hypot(striker.dx,striker.dy)*0.3;
+      c.dx = Math.cos(angle)*power;
+      c.dy = Math.sin(angle)*power;
+      striker.dx *=0.6;
+      striker.dy *=0.6;
     }
   });
+
+  // Check pockets
+  let pockets = [[0,0],[400,0],[0,400],[400,400]];
+  coins = coins.filter(c=>{
+    let pocketed=false;
+    pockets.forEach(p=>{
+      if(Math.hypot(c.x-p[0],c.y-p[1])<20){ pocketed=true; score+=1; }
+    });
+    return !pocketed;
+  });
+  scoreEl.innerText="Score: "+score;
 }
 
-function draw() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  
+function draw(){
+  ctx.clearRect(0,0,400,400);
+  // Draw pockets
+  ctx.fillStyle='black';
+  [[0,0],[400,0],[0,400],[400,400]].forEach(p=>{
+    ctx.beginPath();
+    ctx.arc(p[0],p[1],20,0,Math.PI*2);
+    ctx.fill();
+  });
   // Draw coins
   coins.forEach(c=>{
     ctx.beginPath();
     ctx.arc(c.x,c.y,c.radius,0,Math.PI*2);
-    ctx.fillStyle = c.color;
+    ctx.fillStyle=c.color;
     ctx.fill();
   });
   // Draw striker
   ctx.beginPath();
   ctx.arc(striker.x,striker.y,striker.radius,0,Math.PI*2);
-  ctx.fillStyle = striker.color;
+  ctx.fillStyle=striker.color;
   ctx.fill();
 
-  // Draw aiming line
-  if (aiming) {
-    ctx.strokeStyle = 'blue';
+  // Aiming line
+  if(aiming){
+    ctx.strokeStyle='blue';
     ctx.beginPath();
-    ctx.moveTo(striker.x, striker.y);
-    ctx.lineTo(aimX, aimY);
+    ctx.moveTo(striker.x,striker.y);
+    ctx.lineTo(aimX,aimY);
     ctx.stroke();
   }
 }
 
-function loop() {
+function loop(){
   update();
   draw();
   requestAnimationFrame(loop);
