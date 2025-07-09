@@ -3,97 +3,59 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>🎱 Carrom Game 🎱</title>
+<title>Mini Carrom Game</title>
 <style>
   body {
-    background: #f7e7ce;
-    font-family: 'Comic Sans MS', cursive, sans-serif;
     margin: 0;
-    text-align: center;
+    background: #f2e6d9;
+    font-family: sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    color: #c44;
+    margin: 10px;
   }
   canvas {
-    background: #deb887;
-    border: 10px solid #8b4513;
-    border-radius: 20px;
-    margin-top: 20px;
-  }
-  header {
-    background: #8b4513;
-    color: white;
-    padding: 10px;
+    background: #fff8dc;
+    border: 5px solid #8b5a2b;
   }
 </style>
 </head>
 <body>
-<header>
-  <h1>🎱 Carrom Game 🎱</h1>
-</header>
-<canvas id="gameCanvas" width="400" height="400"></canvas>
+
+<h1>🎱 Mini Carrom Game 🎱</h1>
+<canvas id="canvas" width="400" height="400"></canvas>
 
 <script>
-const canvas = document.getElementById('gameCanvas');
+const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-let striker = { x: canvas.width/2, y: canvas.height-30, radius: 12, dx: 0, dy: 0 };
+// Define striker and coins
+let striker = { x: 200, y: 350, radius: 15, dx:0, dy:0, color:'black' };
 let coins = [
-  {x: canvas.width/2, y: canvas.height/2, radius: 8, color: "black", dx:0, dy:0},
-  {x: canvas.width/2+20, y: canvas.height/2, radius: 8, color: "white", dx:0, dy:0},
-  {x: canvas.width/2-20, y: canvas.height/2, radius: 8, color: "white", dx:0, dy:0},
-  {x: canvas.width/2, y: canvas.height/2+20, radius: 8, color: "black", dx:0, dy:0}
+  { x: 200, y: 200, radius:10, dx:0, dy:0, color:'red' },
+  { x: 220, y: 200, radius:10, dx:0, dy:0, color:'white' },
+  { x: 180, y: 200, radius:10, dx:0, dy:0, color:'white' }
 ];
+
 let aiming = false;
 let aimX=0, aimY=0;
 
-// Draw everything
-function drawBoard() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+canvas.onmousedown = e => {
+  aiming = true;
+  aimX = e.offsetX;
+  aimY = e.offsetY;
+};
+canvas.onmouseup = e => {
+  aiming = false;
+  let dx = aimX - e.offsetX;
+  let dy = aimY - e.offsetY;
+  striker.dx = dx*0.1;
+  striker.dy = dy*0.1;
+};
 
-  // Draw pockets
-  let pocketRadius = 15;
-  let pockets = [
-    {x: 0, y: 0},
-    {x: canvas.width, y: 0},
-    {x: 0, y: canvas.height},
-    {x: canvas.width, y: canvas.height}
-  ];
-  ctx.fillStyle = "black";
-  pockets.forEach(p => {
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, pocketRadius, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  // Draw center circle
-  ctx.strokeStyle = "red";
-  ctx.beginPath();
-  ctx.arc(canvas.width/2, canvas.height/2, 40, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Draw coins
-  coins.forEach(c => {
-    ctx.fillStyle = c.color;
-    ctx.beginPath();
-    ctx.arc(c.x, c.y, c.radius, 0, Math.PI*2);
-    ctx.fill();
-  });
-
-  // Draw striker
-  ctx.fillStyle = "red";
-  ctx.beginPath();
-  ctx.arc(striker.x, striker.y, striker.radius, 0, Math.PI*2);
-  ctx.fill();
-
-  // Draw aiming line
-  if (aiming) {
-    ctx.strokeStyle = "blue";
-    ctx.beginPath();
-    ctx.moveTo(striker.x, striker.y);
-    ctx.lineTo(aimX, aimY);
-    ctx.stroke();
-  }
-}
-
-// Move coins and striker
 function update() {
   [striker, ...coins].forEach(ball => {
     ball.x += ball.dx;
@@ -102,9 +64,27 @@ function update() {
     ball.dy *= 0.98;
     if (Math.abs(ball.dx) < 0.1) ball.dx=0;
     if (Math.abs(ball.dy) < 0.1) ball.dy=0;
+
+    // Wall collision
+    if (ball.x - ball.radius < 0) {
+      ball.x = ball.radius;
+      ball.dx = -ball.dx;
+    }
+    if (ball.x + ball.radius > canvas.width) {
+      ball.x = canvas.width - ball.radius;
+      ball.dx = -ball.dx;
+    }
+    if (ball.y - ball.radius < 0) {
+      ball.y = ball.radius;
+      ball.dy = -ball.dy;
+    }
+    if (ball.y + ball.radius > canvas.height) {
+      ball.y = canvas.height - ball.radius;
+      ball.dy = -ball.dy;
+    }
   });
 
-  // Simple collision: striker hits coins
+  // Simple striker hits coins
   coins.forEach(c => {
     let dx = c.x - striker.x;
     let dy = c.y - striker.y;
@@ -118,31 +98,38 @@ function update() {
   });
 }
 
-// Game loop
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // Draw coins
+  coins.forEach(c=>{
+    ctx.beginPath();
+    ctx.arc(c.x,c.y,c.radius,0,Math.PI*2);
+    ctx.fillStyle = c.color;
+    ctx.fill();
+  });
+  // Draw striker
+  ctx.beginPath();
+  ctx.arc(striker.x,striker.y,striker.radius,0,Math.PI*2);
+  ctx.fillStyle = striker.color;
+  ctx.fill();
+
+  // Draw aiming line
+  if (aiming) {
+    ctx.strokeStyle = 'blue';
+    ctx.beginPath();
+    ctx.moveTo(striker.x, striker.y);
+    ctx.lineTo(aimX, aimY);
+    ctx.stroke();
+  }
+}
+
 function loop() {
   update();
-  drawBoard();
+  draw();
   requestAnimationFrame(loop);
 }
 loop();
-
-// Mouse control
-canvas.addEventListener("mousedown", e => {
-  aiming = true;
-  aimX = e.offsetX;
-  aimY = e.offsetY;
-});
-canvas.addEventListener("mousemove", e => {
-  if (aiming) {
-    aimX = e.offsetX;
-    aimY = e.offsetY;
-  }
-});
-canvas.addEventListener("mouseup", e => {
-  aiming = false;
-  striker.dx = (striker.x - aimX)*0.1;
-  striker.dy = (striker.y - aimY)*0.1;
-});
 </script>
+
 </body>
 </html>
