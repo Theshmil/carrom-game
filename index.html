@@ -2,290 +2,212 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Carrom Game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carrom Pool</title>
 <style>
   body {
-    background: #111;
-    color: #fff;
-    font-family: Arial, sans-serif;
-    text-align: center;
     margin: 0;
+    background: #222;
+    font-family: sans-serif;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    margin: 10px;
   }
   canvas {
-    background: #deb887;
-    margin-top: 10px;
+    background: url('https://i.imgur.com/hvXNs9g.jpg'); /* Wooden texture */
+    background-size: cover;
+    border: 5px solid #fff;
+    border-radius: 20px;
     touch-action: none;
   }
-  #menu, #win {
-    position: absolute;
-    top: 30%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: #222;
-    border: 2px solid #555;
-    padding: 30px;
-    border-radius: 10px;
-  }
-  #menu button, #win button {
+  #menu {
     margin: 10px;
-    padding: 15px 25px;
-    background: #fff;
-    color: #000;
-    font-size: 1.2em;
+  }
+  #menu button {
+    margin: 5px;
+    padding: 10px 20px;
+    font-size: 18px;
+    background: #444;
+    color: #fff;
     border: none;
     border-radius: 8px;
-    cursor: pointer;
   }
-  #score {
-    margin-top: 10px;
-    font-size: 1.2em;
+  #powerSlider {
+    width: 200px;
+    margin: 10px;
+  }
+  #winMessage {
+    position: absolute;
+    top: 40%;
+    background: rgba(0,0,0,0.8);
+    padding: 20px;
+    border-radius: 10px;
+    font-size: 24px;
+    display: none;
   }
 </style>
 </head>
 <body>
 
-<h1>Carrom Game</h1>
+<h1>Carrom Pool</h1>
 <div id="menu">
-  <h2>Choose Mode</h2>
-  <button onclick="startGame('local')">Local Multiplayer</button>
-  <button onclick="startGame('ai')">Play vs AI</button>
-</div>
-
-<canvas id="canvas" width="400" height="400" style="display:none"></canvas>
-<div id="score" style="display:none">Score: 0</div>
-
-<div id="win" style="display:none">
-  <h2>You Win!</h2>
   <button onclick="restartGame()">Restart</button>
+  <label>Power:
+    <input type="range" id="powerSlider" min="5" max="20" value="10">
+  </label>
 </div>
+<canvas id="gameCanvas" width="400" height="400"></canvas>
+<div id="winMessage">🎉 You Win! <button onclick="restartGame()">Play Again</button></div>
+
+<audio id="strikeSound" src="https://www.myinstants.com/media/sounds/button-10.mp3"></audio>
+<audio id="pocketSound" src="https://www.myinstants.com/media/sounds/metal-clank.mp3"></audio>
+<audio id="winSound" src="https://www.myinstants.com/media/sounds/success-fanfare-trumpets.mp3"></audio>
 
 <script>
-const canvas = document.getElementById('canvas');
+const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const scoreEl = document.getElementById('score');
-const menuEl = document.getElementById('menu');
-const winEl = document.getElementById('win');
+let striker = {x: 200, y: 360, r: 10, vx: 0, vy: 0};
+let pucks = [];
+let dragging = false;
+let dragStart = null;
+let power = 10;
+const powerSlider = document.getElementById('powerSlider');
+powerSlider.oninput = () => { power = parseInt(powerSlider.value); }
 
-let striker, coins, allBalls, score, dragging, dragStart, dragEnd, gameMode;
-
-function startGame(mode){
-  gameMode = mode;
-  score=0;
-  striker = { x: 200, y: 350, radius: 12, dx:0, dy:0, color:'#fff', border:'#003366' };
-  coins = [];
-
-  // Red coin in center
-  coins.push({ x:200, y:200, radius:10, dx:0, dy:0, color:'red' });
-
-  // Arrange 9 coins in circle
-  let colors = ['white','white','white','white','#000','#000','#000','#000','white'];
-  let angleStep = (2*Math.PI)/colors.length;
-  let r=25;
-  for(let i=0;i<colors.length;i++){
-    let angle = i*angleStep;
-    coins.push({ x:200+Math.cos(angle)*r, y:200+Math.sin(angle)*r, radius:10, dx:0, dy:0, color:colors[i] });
+function initPucks() {
+  pucks = [];
+  const positions = [
+    {x: 200, y: 200}, {x: 215, y: 200}, {x: 185, y: 200},
+    {x: 200, y: 215}, {x: 200, y: 185}, {x: 215, y: 215},
+    {x: 185, y: 185}, {x: 215, y: 185}, {x: 185, y: 215},
+    {x: 200, y: 170}
+  ];
+  for (let i=0; i<positions.length; i++) {
+    pucks.push({x: positions[i].x, y: positions[i].y, r:8, color: i==0?'red': (i%2==0?'white':'black'), vx:0, vy:0});
   }
-
-  allBalls = [striker, ...coins];
-  dragging = false;
-  menuEl.style.display='none';
-  winEl.style.display='none';
-  canvas.style.display='block';
-  scoreEl.style.display='block';
-  loop();
 }
 
-function restartGame(){
-  startGame(gameMode);
+function restartGame() {
+  striker.x = 200; striker.y = 360; striker.vx=0; striker.vy=0;
+  initPucks();
+  document.getElementById('winMessage').style.display='none';
 }
 
-function getPos(e){
-  if(e.touches) return { x: e.touches[0].clientX - canvas.getBoundingClientRect().left, y: e.touches[0].clientY - canvas.getBoundingClientRect().top };
-  else return { x: e.offsetX, y: e.offsetY };
-}
-
-canvas.addEventListener('mousedown', startDrag);
-canvas.addEventListener('mousemove', dragMove);
-canvas.addEventListener('mouseup', endDrag);
-canvas.addEventListener('touchstart', startDrag, {passive: false});
-canvas.addEventListener('touchmove', dragMove, {passive: false});
-canvas.addEventListener('touchend', endDrag);
-
-function startDrag(e){
-  e.preventDefault();
-  const pos = getPos(e);
-  if(Math.hypot(pos.x - striker.x, pos.y - striker.y) < striker.radius+10){
+canvas.addEventListener('mousedown', e=>{
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  if (Math.hypot(x - striker.x, y - striker.y) < striker.r+10) {
     dragging = true;
-    dragStart = pos;
+    dragStart = {x, y};
   }
-}
-
-function dragMove(e){
-  if(dragging){
-    e.preventDefault();
-    dragEnd = getPos(e);
+});
+canvas.addEventListener('mouseup', e=>{
+  if (dragging) {
+    const dx = dragStart.x - striker.x;
+    const dy = dragStart.y - striker.y;
+    const len = Math.hypot(dx, dy);
+    striker.vx = (dx/len)*power;
+    striker.vy = (dy/len)*power;
+    document.getElementById('strikeSound').play();
   }
-}
-
-function endDrag(e){
-  if(dragging){
-    e.preventDefault();
-    dragging = false;
-    if(dragEnd){
-      let dx = striker.x - dragEnd.x;
-      let dy = striker.y - dragEnd.y;
-      let length = Math.hypot(dx, dy);
-      if(length>0){
-        let force = Math.min(length/10, 6);
-        striker.dx = (dx/length)*force;
-        striker.dy = (dy/length)*force;
-      }
-    }
-    dragStart = null;
-    dragEnd = null;
+  dragging=false;
+});
+canvas.addEventListener('mousemove', e=>{
+  if (dragging) {
+    const rect = canvas.getBoundingClientRect();
+    dragStart = {x: e.clientX - rect.left, y: e.clientY - rect.top};
   }
-}
+});
 
-function collide(b1, b2){
-  let dx=b2.x-b1.x;
-  let dy=b2.y-b1.y;
-  let dist=Math.hypot(dx,dy);
-  let minDist=b1.radius+b2.radius;
-  if(dist<minDist && dist>0){
-    let overlap = (minDist - dist) / 2;
-    let nx = dx/dist;
-    let ny = dy/dist;
-    b1.x -= nx*overlap;
-    b1.y -= ny*overlap;
-    b2.x += nx*overlap;
-    b2.y += ny*overlap;
-
-    let vx=b1.dx - b2.dx;
-    let vy=b1.dy - b2.dy;
-    let dot= vx*nx + vy*ny;
-    b1.dx -= dot*nx;
-    b1.dy -= dot*ny;
-    b2.dx += dot*nx;
-    b2.dy += dot*ny;
-  }
-}
-
-function update() {
-  allBalls.forEach(ball=>{
-    ball.x += ball.dx;
-    ball.y += ball.dy;
-    ball.dx *=0.98;
-    ball.dy *=0.98;
-    if(Math.abs(ball.dx)<0.05) ball.dx=0;
-    if(Math.abs(ball.dy)<0.05) ball.dy=0;
-
-    if(ball.x - ball.radius < 0){ ball.x=ball.radius; ball.dx=-ball.dx; }
-    if(ball.x + ball.radius > 400){ ball.x=400-ball.radius; ball.dx=-ball.dx; }
-    if(ball.y - ball.radius < 0){ ball.y=ball.radius; ball.dy=-ball.dy; }
-    if(ball.y + ball.radius > 400){ ball.y=400-ball.radius; ball.dy=-ball.dy; }
-  });
-
-  for(let i=0;i<allBalls.length;i++){
-    for(let j=i+1;j<allBalls.length;j++){
-      collide(allBalls[i], allBalls[j]);
-    }
-  }
-
-  let pockets = [[0,0],[400,0],[0,400],[400,400]];
-  coins = coins.filter(c=>{
-    let pocketed=false;
-    pockets.forEach(p=>{
-      if(Math.hypot(c.x-p[0],c.y-p[1])<28){ pocketed=true; score+=1; }
-    });
-    return !pocketed;
-  });
-  allBalls = [striker, ...coins];
-  scoreEl.innerText="Score: "+score;
-
-  if(coins.length===0){
-    canvas.style.display='none';
-    scoreEl.style.display='none';
-    winEl.style.display='block';
-  }
-}
-
-function drawBoard(){
+function draw() {
   ctx.clearRect(0,0,400,400);
-  ctx.fillStyle='#deb887';
-  ctx.fillRect(0,0,400,400);
-
-  ctx.strokeStyle='#8b4513';
-  ctx.lineWidth=6;
-  ctx.strokeRect(10,10,380,380);
-
-  ctx.strokeStyle='#654321';
-  ctx.lineWidth=3;
-  ctx.strokeRect(40,40,320,320);
-
-  ctx.beginPath();
-  ctx.arc(200,200,20,0,Math.PI*2);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(200,40); ctx.lineTo(200,360);
-  ctx.moveTo(40,200); ctx.lineTo(360,200);
-  ctx.stroke();
-
-  ctx.fillStyle='#000';
-  [[0,0],[400,0],[0,400],[400,400]].forEach(p=>{
+  // draw pockets
+  [0,400].forEach(x=>[0,400].forEach(y=>{
     ctx.beginPath();
-    ctx.arc(p[0],p[1],28,0,Math.PI*2);
-    ctx.fill();
-  });
-}
-
-function draw(){
-  drawBoard();
-  coins.forEach(c=>{
+    ctx.arc(x,y,15,0,Math.PI*2);
+    ctx.fillStyle='#000'; ctx.fill();
+  }));
+  // draw pucks
+  pucks.forEach(p=>{
     ctx.beginPath();
-    ctx.arc(c.x,c.y,c.radius,0,Math.PI*2);
-    ctx.fillStyle=c.color;
-    ctx.fill();
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle=p.color; ctx.fill();
   });
+  // draw striker
   ctx.beginPath();
-  ctx.arc(striker.x,striker.y,striker.radius,0,Math.PI*2);
-  ctx.fillStyle=striker.color;
-  ctx.fill();
-  ctx.lineWidth=2;
-  ctx.strokeStyle=striker.border;
-  ctx.stroke();
+  ctx.arc(striker.x,striker.y,striker.r,0,Math.PI*2);
+  ctx.fillStyle='navy'; ctx.fill();
 
-  if(dragging && dragEnd){
-    // Main aim line
-    ctx.strokeStyle='cyan';
+  // aiming line
+  if (dragging) {
     ctx.beginPath();
     ctx.moveTo(striker.x,striker.y);
-    ctx.lineTo(dragEnd.x,dragEnd.y);
+    ctx.lineTo(dragStart.x,dragStart.y);
+    ctx.strokeStyle='yellow';
     ctx.stroke();
+    // extra: line to nearest puck
+    const target = pucks[0];
+    ctx.beginPath();
+    ctx.moveTo(striker.x,striker.y);
+    ctx.lineTo(target.x,target.y);
+    ctx.strokeStyle='red';
+    ctx.stroke();
+  }
+}
 
-    // Predict puck hit line
-    let dx = striker.x - dragEnd.x;
-    let dy = striker.y - dragEnd.y;
-    let len = Math.hypot(dx, dy);
-    if(len>0){
-      let normX=dx/len, normY=dy/len;
-      ctx.strokeStyle='rgba(255,255,255,0.3)';
-      ctx.beginPath();
-      ctx.moveTo(striker.x,striker.y);
-      ctx.lineTo(striker.x+normX*100, striker.y+normY*100);
-      ctx.stroke();
+function physics() {
+  striker.x += striker.vx; striker.y += striker.vy;
+  striker.vx*=0.98; striker.vy*=0.98;
+  pucks.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy;
+    p.vx*=0.98; p.vy*=0.98;
+  });
+
+  // collisions
+  pucks.forEach(p=>{
+    const dx = striker.x - p.x, dy = striker.y - p.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < striker.r + p.r) {
+      // simple elastic
+      const angle = Math.atan2(dy, dx);
+      const speed = Math.hypot(striker.vx,striker.vy);
+      p.vx = Math.cos(angle)*speed; p.vy = Math.sin(angle)*speed;
+      striker.vx*=-0.5; striker.vy*=-0.5;
     }
+  });
+
+  // check pocket
+  pucks = pucks.filter(p=>{
+    if ([0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<15))){
+      document.getElementById('pocketSound').play();
+      return false;
+    }
+    return true;
+  });
+
+  // win
+  if (pucks.length==0) {
+    document.getElementById('winMessage').style.display='block';
+    document.getElementById('winSound').play();
   }
+
+  // bounds
+  striker.x=Math.max(striker.r,Math.min(400-striker.r,striker.x));
+  striker.y=Math.max(striker.r,Math.min(400-striker.r,striker.y));
 }
 
-function loop(){
-  if(coins.length>0){
-    update();
-    draw();
-    requestAnimationFrame(loop);
-  }
+function loop() {
+  physics(); draw();
+  requestAnimationFrame(loop);
 }
+
+restartGame();
+loop();
 </script>
+
 </body>
 </html>
