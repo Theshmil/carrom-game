@@ -34,7 +34,7 @@ const ctx=canvas.getContext('2d');
 const slider=document.getElementById('strikerSlider');
 let striker={x:200,y:360,r:12,vx:0,vy:0};
 let pucks=[], dragging=false, dragStart=null, dragEnd=null;
-let mode='', turn=0; // 0: player1, 1: player2
+let mode='', turn=0; // 0: player1 bottom, 1: player2 top
 let waitingForNextTurn=true;
 
 function initPucks(){
@@ -115,7 +115,6 @@ function physics(){
   for(let i=0;i<pucks.length;i++) for(let j=i+1;j<pucks.length;j++) collide(pucks[i],pucks[j]);
 
   if(!waitingForNextTurn && allStopped()){ 
-    // next player's turn
     turn=1-turn; striker.y=turn==0?360:40; slider.value=striker.x;
     slider.style.display='block'; waitingForNextTurn=true;
   }
@@ -124,10 +123,18 @@ function physics(){
 function drawBoard(){
   ctx.fillStyle='#d2b48c'; ctx.fillRect(0,0,400,400);
   ctx.strokeStyle='brown'; ctx.lineWidth=2;
+  // carrom circles
   ctx.beginPath(); ctx.arc(200,200,50,0,2*Math.PI); ctx.stroke();
   ctx.beginPath(); ctx.arc(200,200,30,0,2*Math.PI); ctx.stroke();
   ctx.beginPath(); ctx.arc(200,200,10,0,2*Math.PI); ctx.stroke();
+  // diagonals
   ctx.moveTo(50,50); ctx.lineTo(350,350); ctx.moveTo(350,50); ctx.lineTo(50,350); ctx.stroke();
+  // horizontal baselines to show striker range
+  ctx.strokeStyle='black'; ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(60,40); ctx.lineTo(340,40);
+  ctx.moveTo(60,360); ctx.lineTo(340,360);
+  ctx.stroke();
 }
 
 function draw(){
@@ -142,11 +149,10 @@ function draw(){
   ctx.beginPath(); ctx.arc(striker.x,striker.y,striker.r,0,2*Math.PI); ctx.fillStyle='navy'; ctx.fill();
 
   if(dragging){
-    // short drag line
+    // drag line
     ctx.strokeStyle='yellow';
     ctx.beginPath(); ctx.moveTo(striker.x,striker.y); ctx.lineTo(dragEnd.x,dragEnd.y); ctx.stroke();
-    
-    // long guide line
+    // guide line
     let dx=dragEnd.x - striker.x, dy=dragEnd.y - striker.y, len=Math.hypot(dx,dy);
     if(len>0){
       let ex=striker.x - dx/len*100, ey=striker.y - dy/len*100;
