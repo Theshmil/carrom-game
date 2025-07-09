@@ -26,7 +26,7 @@
 <script>
 const canvas=document.getElementById('gameCanvas');
 const ctx=canvas.getContext('2d');
-let striker={x:200,y:360,r:10,vx:0,vy:0};
+let striker={x:200,y:360,r:12,vx:0,vy:0};  // bigger striker
 let pucks=[];
 let dragging=false, dragStart=null, dragEnd=null;
 let mode='';
@@ -34,7 +34,7 @@ let mode='';
 function initPucks(){
   pucks=[];
   const pos=[{x:200,y:200},{x:215,y:200},{x:185,y:200},{x:200,y:215},{x:200,y:185},{x:215,y:215},{x:185,y:185},{x:215,y:185},{x:185,y:215}];
-  pos.forEach((p,i)=>pucks.push({x:p.x,y:p.y,r:8,color:i==0?'red':i%2==0?'white':'black',vx:0,vy:0}));
+  pos.forEach((p,i)=>pucks.push({x:p.x,y:p.y,r:10,color:i==0?'red':i%2==0?'white':'black',vx:0,vy:0})); // bigger pucks
 }
 
 function restartGame(){
@@ -132,12 +132,16 @@ function physics(){
 
 function drawBoard(){
   ctx.fillStyle='#d2b48c'; ctx.fillRect(0,0,400,400);
+  
+  // draw more carrom style graphics
   ctx.strokeStyle='brown'; ctx.lineWidth=2;
   ctx.beginPath(); ctx.arc(200,200,50,0,2*Math.PI); ctx.stroke();
   ctx.beginPath(); ctx.arc(200,200,30,0,2*Math.PI); ctx.stroke();
   ctx.beginPath(); ctx.arc(200,200,10,0,2*Math.PI); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(400,400);
-  ctx.moveTo(400,0); ctx.lineTo(0,400); ctx.stroke();
+  
+  ctx.beginPath(); ctx.moveTo(50,50); ctx.lineTo(350,350);
+  ctx.moveTo(350,50); ctx.lineTo(50,350); ctx.stroke();
+  
   ctx.fillStyle='brown';
   ctx.fillRect(190,0,20,10);
   ctx.fillRect(190,390,20,10);
