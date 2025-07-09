@@ -21,9 +21,6 @@
     border-radius: 20px;
     touch-action: none;
   }
-  .menu, .scoreboard {
-    margin: 10px;
-  }
   .menu button {
     margin: 5px;
     padding: 10px 20px;
@@ -40,50 +37,40 @@
 <body>
 <h1>Carrom</h1>
 <div class="menu">
-  <button onclick="startGame('local')">Local Play</button>
+  <button onclick="startGame()">Local Play</button>
   <button onclick="alert('AI coming soon!')">AI 🤖</button>
   <button onclick="alert('Created by Treadmil and Sofa')">About</button>
 </div>
-<div class="scoreboard">Score: <span id="score">0</span></div>
 <canvas id="gameCanvas" width="500" height="500"></canvas>
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-let striker, pucks, isDragging = false, dragStart = null, dragEnd = null, score = 0;
 
-function startGame(mode) {
+let striker, pucks, isDragging = false, dragStart = null, dragEnd = null;
+
+function startGame() {
   striker = { x: 250, y: 450, radius: 12, dx: 0, dy: 0, color: "#222" };
-  pucks = [];
-  const radius = 14;
-  const center = { x: 250, y: 250 };
-  // Queen
-  pucks.push({ x: center.x, y: center.y, radius, color: "red", dx: 0, dy: 0 });
-  // Black & White pucks
-  for (let i=0;i<4;i++)
-    pucks.push({ x:center.x+(i-1.5)*30, y:center.y-30, radius, color:"black", dx:0, dy:0 });
-  for (let i=0;i<4;i++)
-    pucks.push({ x:center.x+(i-1.5)*30, y:center.y+30, radius, color:"white", dx:0, dy:0 });
-  score = 0;
-  document.getElementById("score").textContent = score;
+  pucks = [
+    { x: 250, y: 250, radius: 14, color: "red", dx: 0, dy: 0 },
+    { x: 230, y: 230, radius: 14, color: "black", dx: 0, dy: 0 },
+    { x: 270, y: 230, radius: 14, color: "white", dx: 0, dy: 0 },
+    { x: 230, y: 270, radius: 14, color: "white", dx: 0, dy: 0 },
+    { x: 270, y: 270, radius: 14, color: "black", dx: 0, dy: 0 }
+  ];
 }
 
 function drawBoard() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  // Pockets
+  ctx.clearRect(0,0,500,500);
+  ctx.fillStyle = "#deb887";
+  ctx.fillRect(0,0,500,500);
+  // pockets
   ctx.fillStyle="#000";
   [[0,0],[500,0],[0,500],[500,500]].forEach(([x,y])=>{
     ctx.beginPath(); ctx.arc(x,y,20,0,Math.PI*2); ctx.fill();
   });
-  // Border & baselines
-  ctx.strokeStyle="#5d4037"; ctx.lineWidth=4; ctx.strokeRect(40,40,420,420);
-  ctx.lineWidth=2; ctx.strokeRect(60,60,380,380);
-  // Center circle
-  ctx.beginPath(); ctx.arc(250,250,30,0,Math.PI*2); ctx.stroke();
-  ctx.fillStyle="#b71c1c"; ctx.beginPath(); ctx.arc(250,250,5,0,Math.PI*2); ctx.fill();
-  // Drag line
+  // guide line
   if (isDragging && dragStart && dragEnd) {
     ctx.strokeStyle="rgba(255,255,255,0.8)";
-    ctx.lineWidth=2;
     ctx.beginPath();
     ctx.moveTo(striker.x,striker.y);
     ctx.lineTo(dragEnd.x,dragEnd.y);
@@ -102,65 +89,50 @@ function draw() {
   drawPuck(striker);
 }
 
-function updatePhysics() {
-  [...pucks, striker].forEach(p=>{
-    p.x += p.dx; p.y += p.dy;
-    p.dx *= 0.98; p.dy *=0.98;
-    if (Math.abs(p.dx)<0.05) p.dx=0;
-    if (Math.abs(p.dy)<0.05) p.dy=0;
-    // Walls
-    if (p.x - p.radius <0 || p.x + p.radius>500) { p.x=Math.max(p.radius,Math.min(500-p.radius,p.x)); p.dx=-p.dx; }
-    if (p.y - p.radius <0 || p.y + p.radius>500) { p.y=Math.max(p.radius,Math.min(500-p.radius,p.y)); p.dy=-p.dy; }
-  });
-  // Collisions
-  let all = [striker,...pucks];
-  for (let i=0;i<all.length;i++) {
-    for (let j=i+1;j<all.length;j++) {
-      let a=all[i], b=all[j];
-      let dx=b.x-a.x, dy=b.y-a.y, dist=Math.hypot(dx,dy);
-      if (dist<a.radius+b.radius) {
-        let overlap=(a.radius+b.radius)-dist;
-        let nx=dx/dist, ny=dy/dist;
-        a.x -= nx*overlap/2; a.y -= ny*overlap/2;
-        b.x += nx*overlap/2; b.y += ny*overlap/2;
-        // swap speed
-        [a.dx,b.dx]=[b.dx,a.dx]; [a.dy,b.dy]=[b.dy,a.dy];
-      }
+function update() {
+  // move striker
+  striker.x += striker.dx; striker.y += striker.dy;
+  striker.dx *= 0.98; striker.dy *= 0.98;
+  if (Math.abs(striker.dx)<0.1) striker.dx=0;
+  if (Math.abs(striker.dy)<0.1) striker.dy=0;
+
+  // collisions
+  pucks.forEach(p=>{
+    let dx = p.x - striker.x;
+    let dy = p.y - striker.y;
+    let dist = Math.hypot(dx,dy);
+    if(dist < p.radius+striker.radius){
+      let angle = Math.atan2(dy, dx);
+      let overlap = p.radius+striker.radius - dist;
+      striker.x -= Math.cos(angle)*overlap/2;
+      striker.y -= Math.sin(angle)*overlap/2;
+      p.x += Math.cos(angle)*overlap/2;
+      p.y += Math.sin(angle)*overlap/2;
+      // swap speeds
+      [striker.dx, p.dx] = [p.dx || 0, striker.dx];
+      [striker.dy, p.dy] = [p.dy || 0, striker.dy];
     }
-  }
-  // Pocket detection
-  for (let i=pucks.length-1;i>=0;i--) {
-    let p=pucks[i];
-    if (inPocket(p)) { pucks.splice(i,1); score+=10; document.getElementById("score").textContent=score; }
-  }
-}
+  });
 
-function inPocket(p) {
-  return (
-    (p.x<20 && p.y<20) || (p.x>480 && p.y<20) ||
-    (p.x<20 && p.y>480) || (p.x>480 && p.y>480)
-  );
-}
-
-function gameLoop() {
-  updatePhysics();
   draw();
-  requestAnimationFrame(gameLoop);
+  requestAnimationFrame(update);
 }
 
-// Handle drag using clientX/Y
+// drag control
 canvas.addEventListener("mousedown", e=>{
   isDragging=true;
-  dragStart={x:e.clientX - canvas.getBoundingClientRect().left, y:e.clientY - canvas.getBoundingClientRect().top};
+  const rect=canvas.getBoundingClientRect();
+  dragStart={x:e.clientX - rect.left, y:e.clientY - rect.top};
   dragEnd=dragStart;
 });
 canvas.addEventListener("mousemove", e=>{
-  if(isDragging) {
-    dragEnd={x:e.clientX - canvas.getBoundingClientRect().left, y:e.clientY - canvas.getBoundingClientRect().top};
+  if(isDragging){
+    const rect=canvas.getBoundingClientRect();
+    dragEnd={x:e.clientX - rect.left, y:e.clientY - rect.top};
   }
 });
 canvas.addEventListener("mouseup", e=>{
-  if (isDragging && dragStart && dragEnd) {
+  if(isDragging && dragStart && dragEnd){
     let dx=dragStart.x - dragEnd.x;
     let dy=dragStart.y - dragEnd.y;
     striker.dx=dx*0.15;
@@ -170,8 +142,8 @@ canvas.addEventListener("mouseup", e=>{
   dragStart=dragEnd=null;
 });
 
-startGame('local');
-gameLoop();
+startGame();
+update();
 </script>
 </body>
 </html>
