@@ -17,7 +17,8 @@
     margin: 10px;
   }
   canvas {
-    background: #ffe4b5;
+    background: url('https://i.imgur.com/xdbvHcV.jpg'); /* sample carrom board texture */
+    background-size: cover;
     border: 10px solid #8b4513;
     border-radius: 5px;
   }
@@ -63,8 +64,10 @@ canvas.onmouseup = e => {
     aiming=false;
     let dx = e.offsetX - striker.x;
     let dy = e.offsetY - striker.y;
-    striker.dx = dx*0.2;
-    striker.dy = dy*0.2;
+    let angle = Math.atan2(dy, dx);
+    let fixedSpeed = 6; // always same speed
+    striker.dx = Math.cos(angle)*fixedSpeed;
+    striker.dy = Math.sin(angle)*fixedSpeed;
   }
 };
 
@@ -109,19 +112,19 @@ function update() {
     if(ball.y + ball.radius > 400){ ball.y=400-ball.radius; ball.dy=-ball.dy; }
   });
 
-  // Collisions between all coins
+  // Collisions
   for(let i=0;i<allBalls.length;i++){
     for(let j=i+1;j<allBalls.length;j++){
       collide(allBalls[i], allBalls[j]);
     }
   }
 
-  // Check pockets
+  // Check pockets (bigger now)
   let pockets = [[0,0],[400,0],[0,400],[400,400]];
   coins = coins.filter(c=>{
     let pocketed=false;
     pockets.forEach(p=>{
-      if(Math.hypot(c.x-p[0],c.y-p[1])<20){ pocketed=true; score+=1; }
+      if(Math.hypot(c.x-p[0],c.y-p[1])<28){ pocketed=true; score+=1; }
     });
     return !pocketed;
   });
@@ -135,7 +138,7 @@ function draw(){
   ctx.fillStyle='black';
   [[0,0],[400,0],[0,400],[400,400]].forEach(p=>{
     ctx.beginPath();
-    ctx.arc(p[0],p[1],20,0,Math.PI*2);
+    ctx.arc(p[0],p[1],28,0,Math.PI*2); // bigger pockets
     ctx.fill();
   });
   // Draw coins
