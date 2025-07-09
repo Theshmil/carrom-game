@@ -17,9 +17,9 @@
     margin: 10px;
   }
   canvas {
-    border: 10px solid #8b4513;
+    border: 12px solid #8b4513;
     border-radius: 5px;
-    background: #f5deb3;
+    background: #fce5cd;
     display: none;
   }
   #score, #win, #menu {
@@ -72,11 +72,19 @@ function startGame(mode){
   score=0;
   striker = { x: 200, y: 350, radius: 12, dx:0, dy:0, color:'navy' };
   coins = [];
+
+  // Red coin in center
   coins.push({ x:200, y:200, radius:10, dx:0, dy:0, color:'red' });
-  for(let i=0;i<9;i++){
-    coins.push({ x:180+Math.random()*40, y:180+Math.random()*40, radius:10, dx:0, dy:0, color:'white' });
-    coins.push({ x:180+Math.random()*40, y:180+Math.random()*40, radius:10, dx:0, dy:0, color:'#2f2f2f' });
+
+  // Arrange 9 coins around center in circle
+  let colors = ['white','white','white','white','#2f2f2f','#2f2f2f','#2f2f2f','#2f2f2f','white'];
+  let angleStep = (2*Math.PI)/colors.length;
+  let r=25;
+  for(let i=0;i<colors.length;i++){
+    let angle = i*angleStep;
+    coins.push({ x:200+Math.cos(angle)*r, y:200+Math.sin(angle)*r, radius:10, dx:0, dy:0, color:colors[i] });
   }
+
   allBalls = [striker, ...coins];
   aiming = false;
   menuEl.style.display='none';
@@ -168,21 +176,29 @@ function update() {
 
 function drawBoard(){
   ctx.clearRect(0,0,400,400);
+
+  // Outer square
   ctx.strokeStyle='#8b4513';
   ctx.lineWidth=4;
   ctx.strokeRect(20,20,360,360);
+
+  // Inner square
   ctx.strokeStyle='#a0522d';
   ctx.lineWidth=2;
   ctx.strokeRect(60,60,280,280);
+
+  // Center circle
   ctx.beginPath();
   ctx.arc(200,200,20,0,Math.PI*2);
   ctx.stroke();
+
+  // Cross lines
   ctx.beginPath();
-  ctx.moveTo(200,60); ctx.lineTo(200,80);
-  ctx.moveTo(200,340); ctx.lineTo(200,320);
-  ctx.moveTo(60,200); ctx.lineTo(80,200);
-  ctx.moveTo(340,200); ctx.lineTo(320,200);
+  ctx.moveTo(200,60); ctx.lineTo(200,340);
+  ctx.moveTo(60,200); ctx.lineTo(340,200);
   ctx.stroke();
+
+  // Decorative circles
   ctx.fillStyle='black';
   [[0,0],[400,0],[0,400],[400,400]].forEach(p=>{
     ctx.beginPath();
