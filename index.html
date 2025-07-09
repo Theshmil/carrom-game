@@ -43,6 +43,7 @@ let pucks=[];
 let dragging=false, dragStart=null, dragEnd=null;
 let mode='', currentPlayer='white';
 let whiteScore=0, blackScore=0;
+let waitingForNextTurn=false;
 
 function initPucks(){
   pucks=[];
@@ -72,7 +73,7 @@ function placeStriker(){
   // Check if striker overlaps pucks → move left or right
   for(let tries=0; tries<10; tries++){
     if(!pucks.some(p=>Math.hypot(p.x-striker.x,p.y-striker.y)<p.r+striker.r+2)) break;
-    striker.x += 10*(tries%2==0?1:-1); // move right or left
+    striker.x += 10*(tries%2==0?1:-1);
   }
 }
 
@@ -125,6 +126,7 @@ function shoot(){
   if(len>5){
     striker.vx=-(dx/len)*6;
     striker.vy=-(dy/len)*6;
+    waitingForNextTurn=false; // allow turn to switch after striker moves
   }
 }
 
@@ -150,8 +152,6 @@ function collide(a,b){
     b.x += nx*overlap; b.y += ny*overlap;
   }
 }
-
-let waitingForNextTurn=false;
 
 function physics(){
   [striker,...pucks].forEach(obj=>{
@@ -182,33 +182,24 @@ function physics(){
 
   if(pucks.length==0) document.getElementById('winMessage').style.display='block';
 
-  if(!waitingForNextTurn && everythingStopped() && (striker.vx!==0||striker.vy!==0)){
+  // reliable check: striker was moving & now everything stopped
+  if(!waitingForNextTurn && everythingStopped()){
     waitingForNextTurn=true;
-    striker.vx=0; striker.vy=0;
     setTimeout(()=>{
       switchTurn();
-      waitingForNextTurn=false;
     },500);
   }
 }
 
 function drawBoard(){
   ctx.fillStyle='#d2b48c'; ctx.fillRect(0,0,400,400);
-
-  // Add horizontal guide line (slider line)
   ctx.strokeStyle='brown'; ctx.lineWidth=2;
   ctx.beginPath(); ctx.moveTo(40,360); ctx.lineTo(360,360); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(40,40); ctx.lineTo(360,40); ctx.stroke();
-
-  // Center guide line
   ctx.beginPath(); ctx.moveTo(40,200); ctx.lineTo(360,200); ctx.stroke();
-
-  // Circles
   ctx.beginPath(); ctx.arc(200,200,50,0,2*Math.PI); ctx.stroke();
   ctx.beginPath(); ctx.arc(200,200,30,0,2*Math.PI); ctx.stroke();
   ctx.beginPath(); ctx.arc(200,200,10,0,2*Math.PI); ctx.stroke();
-
-  // Diagonal cross lines
   ctx.beginPath(); ctx.moveTo(50,50); ctx.lineTo(350,350);
   ctx.moveTo(350,50); ctx.lineTo(50,350); ctx.stroke();
 }
