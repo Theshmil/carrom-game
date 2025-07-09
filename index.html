@@ -100,7 +100,6 @@ function restartGame(){
   startGame(gameMode);
 }
 
-// Support mouse and touch
 function getPos(e){
   if(e.touches) return { x: e.touches[0].clientX - canvas.getBoundingClientRect().left, y: e.touches[0].clientY - canvas.getBoundingClientRect().top };
   else return { x: e.offsetX, y: e.offsetY };
@@ -138,7 +137,7 @@ function endDrag(e){
       let dy = striker.y - dragEnd.y;
       let length = Math.hypot(dx, dy);
       if(length>0){
-        let force = Math.min(length/10, 6); // fixed speed scaling
+        let force = Math.min(length/10, 6);
         striker.dx = (dx/length)*force;
         striker.dy = (dy/length)*force;
       }
@@ -258,11 +257,25 @@ function draw(){
   ctx.stroke();
 
   if(dragging && dragEnd){
+    // Main aim line
     ctx.strokeStyle='cyan';
     ctx.beginPath();
     ctx.moveTo(striker.x,striker.y);
     ctx.lineTo(dragEnd.x,dragEnd.y);
     ctx.stroke();
+
+    // Predict puck hit line
+    let dx = striker.x - dragEnd.x;
+    let dy = striker.y - dragEnd.y;
+    let len = Math.hypot(dx, dy);
+    if(len>0){
+      let normX=dx/len, normY=dy/len;
+      ctx.strokeStyle='rgba(255,255,255,0.3)';
+      ctx.beginPath();
+      ctx.moveTo(striker.x,striker.y);
+      ctx.lineTo(striker.x+normX*100, striker.y+normY*100);
+      ctx.stroke();
+    }
   }
 }
 
