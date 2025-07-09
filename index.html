@@ -1,47 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Carrom Pool</title>
 <style>
-  body {
-    margin: 0;
-    background: #111;
-    color: #fff;
-    font-family: sans-serif;
-    text-align: center;
-  }
-  canvas {
-    background: #d2b48c;
-    border: 8px solid #fff;
-    border-radius: 20px;
-    touch-action: none;
-  }
-  #menu {
-    margin-top: 50px;
-  }
-  #menu button {
-    margin: 10px;
-    padding: 15px 30px;
-    font-size: 20px;
-    background: #fff;
-    color: #000;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-  }
-  #winMessage {
-    position: absolute;
-    top: 40%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(0,0,0,0.8);
-    padding: 20px;
-    border-radius: 10px;
-    font-size: 24px;
-    display: none;
-  }
+  body { margin:0; background:#111; color:#fff; font-family:sans-serif; text-align:center; }
+  canvas { background:#d2b48c; border:8px solid #fff; border-radius:20px; touch-action:none; }
+  #menu { margin-top:50px; }
+  #menu button { margin:10px; padding:15px 30px; font-size:20px; background:#fff; color:#000; border:none; border-radius:10px; cursor:pointer; }
+  #winMessage { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.8); padding:20px; border-radius:10px; font-size:24px; display:none; }
 </style>
 </head>
 <body>
@@ -54,25 +22,17 @@
 <div id="winMessage">🎉 You Win! <button onclick="restartGame()">Play Again</button></div>
 
 <script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-let striker = {x: 200, y: 360, r: 10, vx: 0, vy: 0};
-let pucks = [];
-let dragging = false;
-let dragStart = null;
-let dragEnd = null;
-let mode = '';
+const canvas=document.getElementById('gameCanvas');
+const ctx=canvas.getContext('2d');
+let striker={x:200,y:360,r:10,vx:0,vy:0};
+let pucks=[];
+let dragging=false, dragStart=null, dragEnd=null;
+let mode='';
 
-function initPucks() {
-  pucks = [];
-  const positions = [
-    {x:200,y:200},{x:215,y:200},{x:185,y:200},
-    {x:200,y:215},{x:200,y:185},{x:215,y:215},
-    {x:185,y:185},{x:215,y:185},{x:185,y:215}
-  ];
-  positions.forEach((pos,i)=>{
-    pucks.push({x:pos.x,y:pos.y,r:8,color:(i==0?'red':i%2==0?'white':'black'),vx:0,vy:0});
-  });
+function initPucks(){
+  pucks=[];
+  const pos=[{x:200,y:200},{x:215,y:200},{x:185,y:200},{x:200,y:215},{x:200,y:185},{x:215,y:215},{x:185,y:185},{x:215,y:185},{x:185,y:215}];
+  pos.forEach((p,i)=>pucks.push({x:p.x,y:p.y,r:8,color:i==0?'red':i%2==0?'white':'black',vx:0,vy:0}));
 }
 
 function restartGame(){
@@ -81,50 +41,38 @@ function restartGame(){
   document.getElementById('winMessage').style.display='none';
 }
 
-function startGame(selectedMode){
-  mode = selectedMode;
+function startGame(selected){
+  mode=selected;
   document.getElementById('menu').style.display='none';
   canvas.style.display='block';
   restartGame();
 }
 
-function isOnStriker(x,y){
-  return Math.hypot(x - striker.x, y - striker.y) < striker.r+10;
-}
-
 function getPos(e){
   const rect=canvas.getBoundingClientRect();
   if(e.touches) e=e.touches[0];
-  return {x: e.clientX - rect.left, y: e.clientY - rect.top};
+  return {x:e.clientX-rect.left,y:e.clientY-rect.top};
 }
 
-// Mouse & touch events
 canvas.addEventListener('mousedown',e=>{
   let pos=getPos(e);
-  if(isOnStriker(pos.x,pos.y)){ dragging=true; dragStart=pos; dragEnd=pos; }
+  if(Math.hypot(pos.x-striker.x,pos.y-striker.y)<striker.r+10){
+    dragging=true; dragStart=pos; dragEnd=pos;
+  }
 });
-canvas.addEventListener('mousemove',e=>{
-  if(dragging) dragEnd=getPos(e);
-});
-canvas.addEventListener('mouseup',e=>{
-  if(dragging){ shootStriker(); }
-  dragging=false;
-});
+canvas.addEventListener('mousemove',e=>{if(dragging) dragEnd=getPos(e);});
+canvas.addEventListener('mouseup',e=>{if(dragging){shoot();} dragging=false;});
 canvas.addEventListener('touchstart',e=>{
   let pos=getPos(e);
-  if(isOnStriker(pos.x,pos.y)){ dragging=true; dragStart=pos; dragEnd=pos; }
+  if(Math.hypot(pos.x-striker.x,pos.y-striker.y)<striker.r+10){
+    dragging=true; dragStart=pos; dragEnd=pos;
+  }
 });
-canvas.addEventListener('touchmove',e=>{
-  if(dragging){ dragEnd=getPos(e); e.preventDefault(); }
-});
-canvas.addEventListener('touchend',e=>{
-  if(dragging){ shootStriker(); }
-  dragging=false;
-});
+canvas.addEventListener('touchmove',e=>{if(dragging){dragEnd=getPos(e); e.preventDefault();}});
+canvas.addEventListener('touchend',e=>{if(dragging){shoot();} dragging=false;});
 
-function shootStriker(){
-  const dx=dragEnd.x - dragStart.x;
-  const dy=dragEnd.y - dragStart.y;
+function shoot(){
+  const dx=dragEnd.x-dragStart.x, dy=dragEnd.y-dragStart.y;
   const len=Math.hypot(dx,dy);
   if(len>5){
     striker.vx=-(dx/len)*6;
@@ -132,76 +80,64 @@ function shootStriker(){
   }
 }
 
-// collision between two circles
 function collide(a,b){
-  let dx=b.x - a.x;
-  let dy=b.y - a.y;
+  let dx=b.x - a.x, dy=b.y - a.y;
   let dist=Math.hypot(dx,dy);
   if(dist< a.r+b.r){
-    let overlap = (a.r+b.r-dist)/2;
     let nx=dx/dist, ny=dy/dist;
+    let p=2*((a.vx*nx+a.vy*ny)-(b.vx*nx+b.vy*ny))/(1+1);
+    a.vx -= p*nx; a.vy -= p*ny;
+    b.vx += p*nx; b.vy += p*ny;
+
+    // move apart
+    let overlap=(a.r+b.r-dist)/2;
     a.x -= nx*overlap; a.y -= ny*overlap;
     b.x += nx*overlap; b.y += ny*overlap;
-    let kx=a.vx - b.vx;
-    let ky=a.vy - b.vy;
-    let p = 2*(nx*kx+ny*ky)/2;
-    a.vx -= p*nx;
-    a.vy -= p*ny;
-    b.vx += p*nx;
-    b.vy += p*ny;
   }
 }
 
 function physics(){
   [striker,...pucks].forEach(obj=>{
     obj.x+=obj.vx; obj.y+=obj.vy;
+    // friction
     obj.vx*=0.98; obj.vy*=0.98;
+    if(Math.abs(obj.vx)<0.05) obj.vx=0;
+    if(Math.abs(obj.vy)<0.05) obj.vy=0;
 
-    // bounce from walls
-    if(obj.x<obj.r||obj.x>400-obj.r) obj.vx*=-1;
-    if(obj.y<obj.r||obj.y>400-obj.r) obj.vy*=-1;
+    // walls
+    if(obj.x<obj.r){obj.x=obj.r; obj.vx*=-1;}
+    if(obj.x>400-obj.r){obj.x=400-obj.r; obj.vx*=-1;}
+    if(obj.y<obj.r){obj.y=obj.r; obj.vy*=-1;}
+    if(obj.y>400-obj.r){obj.y=400-obj.r; obj.vy*=-1;}
   });
 
-  // striker vs pucks
+  // collisions
   pucks.forEach(p=>collide(striker,p));
-
-  // puck vs puck
   for(let i=0;i<pucks.length;i++)
     for(let j=i+1;j<pucks.length;j++)
       collide(pucks[i],pucks[j]);
 
   // pockets
-  pucks = pucks.filter(p=>{
-    if([0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<20))){
-      return false;
-    }
+  pucks=pucks.filter(p=>{
+    if([0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<20))) return false;
     return true;
   });
 
-  if(pucks.length==0){
-    document.getElementById('winMessage').style.display='block';
-  }
+  if(pucks.length==0) document.getElementById('winMessage').style.display='block';
 }
 
 function drawBoard(){
-  // base
-  ctx.fillStyle='#d2b48c';
-  ctx.fillRect(0,0,400,400);
+  ctx.fillStyle='#d2b48c'; ctx.fillRect(0,0,400,400);
+  ctx.strokeStyle='brown'; ctx.lineWidth=2;
 
-  // center circle
-  ctx.beginPath(); ctx.arc(200,200,50,0,Math.PI*2);
-  ctx.strokeStyle='brown'; ctx.lineWidth=2; ctx.stroke();
+  // center circle & designs
+  ctx.beginPath(); ctx.arc(200,200,50,0,2*Math.PI); ctx.stroke();
+  ctx.beginPath(); ctx.arc(200,200,30,0,2*Math.PI); ctx.stroke();
+  ctx.beginPath(); ctx.arc(200,200,10,0,2*Math.PI); ctx.stroke();
 
   // cross lines
-  ctx.strokeStyle='brown';
-  ctx.beginPath();
-  ctx.moveTo(0,0); ctx.lineTo(400,400);
-  ctx.moveTo(400,0); ctx.lineTo(0,400);
-  ctx.stroke();
-
-  // add small circles for design
-  ctx.beginPath(); ctx.arc(200,200,30,0,Math.PI*2); ctx.stroke();
-  ctx.beginPath(); ctx.arc(200,200,10,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(400,400);
+  ctx.moveTo(400,0); ctx.lineTo(0,400); ctx.stroke();
 
   // side patterns
   ctx.fillStyle='brown';
@@ -215,42 +151,29 @@ function draw(){
   ctx.clearRect(0,0,400,400);
   drawBoard();
 
-  // draw pockets
+  // pockets
   [0,400].forEach(x=>[0,400].forEach(y=>{
-    ctx.beginPath(); ctx.arc(x,y,20,0,Math.PI*2);
-    ctx.fillStyle='#000'; ctx.fill();
+    ctx.beginPath(); ctx.arc(x,y,20,0,2*Math.PI); ctx.fillStyle='#000'; ctx.fill();
   }));
 
-  // draw pucks
+  // pucks
   pucks.forEach(p=>{
-    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-    ctx.fillStyle=p.color; ctx.fill();
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,2*Math.PI); ctx.fillStyle=p.color; ctx.fill();
   });
 
-  // draw striker
-  ctx.beginPath(); ctx.arc(striker.x,striker.y,striker.r,0,Math.PI*2);
-  ctx.fillStyle='navy'; ctx.fill();
+  // striker
+  ctx.beginPath(); ctx.arc(striker.x,striker.y,striker.r,0,2*Math.PI); ctx.fillStyle='navy'; ctx.fill();
 
-  // drag line & guideline
+  // drag + guideline
   if(dragging){
     ctx.strokeStyle='yellow';
-    ctx.beginPath();
-    ctx.moveTo(striker.x,striker.y);
-    ctx.lineTo(dragEnd.x,dragEnd.y);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(striker.x,striker.y); ctx.lineTo(dragEnd.x,dragEnd.y); ctx.stroke();
 
-    // guideline: extend line further
-    let dx=dragEnd.x - striker.x;
-    let dy=dragEnd.y - striker.y;
-    let len=Math.hypot(dx,dy);
+    let dx=dragEnd.x-striker.x, dy=dragEnd.y-striker.y, len=Math.hypot(dx,dy);
     if(len>0){
-      let ex=striker.x - dx/len*100;
-      let ey=striker.y - dy/len*100;
+      let ex=striker.x - dx/len*100, ey=striker.y - dy/len*100;
       ctx.setLineDash([5,5]);
-      ctx.beginPath();
-      ctx.moveTo(striker.x,striker.y);
-      ctx.lineTo(ex,ey);
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(striker.x,striker.y); ctx.lineTo(ex,ey); ctx.stroke();
       ctx.setLineDash([]);
     }
   }
