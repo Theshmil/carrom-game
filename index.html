@@ -3,51 +3,63 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mini Carrom Game</title>
+<title>🖤🤍 Carrom Game 🤍🖤</title>
 <style>
   body {
     margin: 0;
-    background: #deb887;
+    background: #000; /* Black background */
     display: flex;
     flex-direction: column;
     align-items: center;
+    color: #fff;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
   }
   h1 {
-    color: #4b2e2e;
-    margin: 10px;
+    margin: 20px;
+    color: #fff;
+    font-size: 2em;
   }
   canvas {
-    border: 12px solid #8b4513;
-    border-radius: 5px;
-    background: #fce5cd;
+    border: 12px solid #fff;
+    border-radius: 8px;
+    background: #111;
     display: none;
   }
-  #score, #win, #menu {
-    font-size: 1.2em;
-    margin: 5px;
-    color: #4b2e2e;
+  #score, #win {
+    font-size: 1.5em;
+    margin: 10px;
+    color: #fff;
   }
-  button {
-    margin: 5px;
-    padding: 10px 20px;
-    background: #8b4513;
-    color: white;
+  #menu {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 50px;
+  }
+  #menu button, #win button {
+    margin: 10px;
+    padding: 15px 30px;
+    background: #fff;
+    color: #000;
     border: none;
     border-radius: 8px;
-    font-size: 1em;
+    font-size: 1.2em;
     cursor: pointer;
+    transition: background 0.3s, color 0.3s;
   }
-  button:hover {
-    background: #a0522d;
+  #menu button:hover, #win button:hover {
+    background: #000;
+    color: #fff;
+    border: 1px solid #fff;
   }
 </style>
 </head>
 <body>
 
-<h1>🎱 Mini Carrom Game 🎱</h1>
+<h1>🖤🤍 Carrom Game 🤍🖤</h1>
 
 <div id="menu">
-  <button onclick="startGame('local')">Local Multiplayer</button>
+  <button onclick="startGame('local')">Play Local Multiplayer</button>
   <button onclick="startGame('ai')">Play vs AI (coming soon)</button>
 </div>
 
@@ -70,14 +82,14 @@ let striker, coins, allBalls, score, aiming, aimX, aimY, gameMode;
 function startGame(mode){
   gameMode = mode;
   score=0;
-  striker = { x: 200, y: 350, radius: 12, dx:0, dy:0, color:'navy' };
+  striker = { x: 200, y: 350, radius: 12, dx:0, dy:0, color:'#fff' };
   coins = [];
 
   // Red coin in center
   coins.push({ x:200, y:200, radius:10, dx:0, dy:0, color:'red' });
 
-  // Arrange 9 coins around center in circle
-  let colors = ['white','white','white','white','#2f2f2f','#2f2f2f','#2f2f2f','#2f2f2f','white'];
+  // Arrange 9 coins in circle
+  let colors = ['white','white','white','white','#000','#000','#000','#000','white'];
   let angleStep = (2*Math.PI)/colors.length;
   let r=25;
   for(let i=0;i<colors.length;i++){
@@ -177,13 +189,16 @@ function update() {
 function drawBoard(){
   ctx.clearRect(0,0,400,400);
 
-  // Outer square
-  ctx.strokeStyle='#8b4513';
+  ctx.fillStyle='#111'; // Dark board
+  ctx.fillRect(0,0,400,400);
+
+  // Outer border
+  ctx.strokeStyle='#fff';
   ctx.lineWidth=4;
   ctx.strokeRect(20,20,360,360);
 
-  // Inner square
-  ctx.strokeStyle='#a0522d';
+  // Inner border
+  ctx.strokeStyle='#ccc';
   ctx.lineWidth=2;
   ctx.strokeRect(60,60,280,280);
 
@@ -198,8 +213,8 @@ function drawBoard(){
   ctx.moveTo(60,200); ctx.lineTo(340,200);
   ctx.stroke();
 
-  // Decorative circles
-  ctx.fillStyle='black';
+  // Pockets
+  ctx.fillStyle='#000';
   [[0,0],[400,0],[0,400],[400,400]].forEach(p=>{
     ctx.beginPath();
     ctx.arc(p[0],p[1],28,0,Math.PI*2);
@@ -221,7 +236,7 @@ function draw(){
   ctx.fill();
 
   if(aiming){
-    ctx.strokeStyle='blue';
+    ctx.strokeStyle='cyan';
     ctx.beginPath();
     ctx.moveTo(striker.x,striker.y);
     ctx.lineTo(aimX,aimY);
