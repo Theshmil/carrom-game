@@ -7,7 +7,7 @@
 <style>
   body {
     margin: 0;
-    background: #deb887;
+    background: #deb887; /* light wood background */
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -17,10 +17,9 @@
     margin: 10px;
   }
   canvas {
-    background: url('https://i.imgur.com/xdbvHcV.jpg'); /* sample carrom board texture */
-    background-size: cover;
     border: 10px solid #8b4513;
     border-radius: 5px;
+    background: #f5deb3; /* light wooden board */
   }
   #score {
     font-size: 1.2em;
@@ -65,7 +64,7 @@ canvas.onmouseup = e => {
     let dx = e.offsetX - striker.x;
     let dy = e.offsetY - striker.y;
     let angle = Math.atan2(dy, dx);
-    let fixedSpeed = 6; // always same speed
+    let fixedSpeed = 6;
     striker.dx = Math.cos(angle)*fixedSpeed;
     striker.dy = Math.sin(angle)*fixedSpeed;
   }
@@ -85,7 +84,6 @@ function collide(b1, b2){
     b2.x += nx*overlap;
     b2.y += ny*overlap;
 
-    // swap velocities
     let vx=b1.dx - b2.dx;
     let vy=b1.dy - b2.dy;
     let dot= vx*nx + vy*ny;
@@ -105,21 +103,18 @@ function update() {
     if(Math.abs(ball.dx)<0.05) ball.dx=0;
     if(Math.abs(ball.dy)<0.05) ball.dy=0;
 
-    // Wall collision
     if(ball.x - ball.radius < 0){ ball.x=ball.radius; ball.dx=-ball.dx; }
     if(ball.x + ball.radius > 400){ ball.x=400-ball.radius; ball.dx=-ball.dx; }
     if(ball.y - ball.radius < 0){ ball.y=ball.radius; ball.dy=-ball.dy; }
     if(ball.y + ball.radius > 400){ ball.y=400-ball.radius; ball.dy=-ball.dy; }
   });
 
-  // Collisions
   for(let i=0;i<allBalls.length;i++){
     for(let j=i+1;j<allBalls.length;j++){
       collide(allBalls[i], allBalls[j]);
     }
   }
 
-  // Check pockets (bigger now)
   let pockets = [[0,0],[400,0],[0,400],[400,400]];
   coins = coins.filter(c=>{
     let pocketed=false;
@@ -132,29 +127,54 @@ function update() {
   scoreEl.innerText="Score: "+score;
 }
 
-function draw(){
+function drawBoard(){
   ctx.clearRect(0,0,400,400);
-  // Draw pockets
+
+  // Outer border square
+  ctx.strokeStyle='#8b4513';
+  ctx.lineWidth=4;
+  ctx.strokeRect(20,20,360,360);
+
+  // Inner square
+  ctx.strokeStyle='#a0522d';
+  ctx.lineWidth=2;
+  ctx.strokeRect(60,60,280,280);
+
+  // Center circle
+  ctx.beginPath();
+  ctx.arc(200,200,20,0,Math.PI*2);
+  ctx.stroke();
+
+  // Arrows / design lines (simple)
+  ctx.beginPath();
+  ctx.moveTo(200,60); ctx.lineTo(200,80);
+  ctx.moveTo(200,340); ctx.lineTo(200,320);
+  ctx.moveTo(60,200); ctx.lineTo(80,200);
+  ctx.moveTo(340,200); ctx.lineTo(320,200);
+  ctx.stroke();
+
+  // Pockets
   ctx.fillStyle='black';
   [[0,0],[400,0],[0,400],[400,400]].forEach(p=>{
     ctx.beginPath();
-    ctx.arc(p[0],p[1],28,0,Math.PI*2); // bigger pockets
+    ctx.arc(p[0],p[1],28,0,Math.PI*2);
     ctx.fill();
   });
-  // Draw coins
+}
+
+function draw(){
+  drawBoard();
   coins.forEach(c=>{
     ctx.beginPath();
     ctx.arc(c.x,c.y,c.radius,0,Math.PI*2);
     ctx.fillStyle=c.color;
     ctx.fill();
   });
-  // Draw striker
   ctx.beginPath();
   ctx.arc(striker.x,striker.y,striker.radius,0,Math.PI*2);
   ctx.fillStyle=striker.color;
   ctx.fill();
 
-  // Aiming line
   if(aiming){
     ctx.strokeStyle='blue';
     ctx.beginPath();
