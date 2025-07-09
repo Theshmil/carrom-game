@@ -68,8 +68,7 @@ function restartGame(){
 
 function placeStriker(){
   striker.y = currentPlayer==='white' ? 360 : 40;
-  striker.x = 200;
-  document.getElementById('strikerSlider').value=200;
+  striker.x = parseInt(document.getElementById('strikerSlider').value);  // Align to slider every time
 }
 
 function startGame(selected){
@@ -172,10 +171,17 @@ function physics(){
 
 function drawBoard(){
   ctx.fillStyle='#d2b48c'; ctx.fillRect(0,0,400,400);
+
+  // Add center guide line
   ctx.strokeStyle='brown'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(40,200); ctx.lineTo(360,200); ctx.stroke();
+
+  // Draw circles
   ctx.beginPath(); ctx.arc(200,200,50,0,2*Math.PI); ctx.stroke();
   ctx.beginPath(); ctx.arc(200,200,30,0,2*Math.PI); ctx.stroke();
   ctx.beginPath(); ctx.arc(200,200,10,0,2*Math.PI); ctx.stroke();
+
+  // Diagonal cross lines
   ctx.beginPath(); ctx.moveTo(50,50); ctx.lineTo(350,350);
   ctx.moveTo(350,50); ctx.lineTo(50,350); ctx.stroke();
 }
