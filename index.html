@@ -7,7 +7,7 @@
 <style>
   body {
     margin: 0;
-    background: #222;
+    background: #111;
     font-family: sans-serif;
     color: #fff;
     display: flex;
@@ -18,9 +18,8 @@
     margin: 10px;
   }
   canvas {
-    background: url('https://i.imgur.com/hvXNs9g.jpg'); /* Wooden texture */
-    background-size: cover;
-    border: 5px solid #fff;
+    background: #deb887; /* Light brown carrom board color */
+    border: 8px solid #fff;
     border-radius: 20px;
     touch-action: none;
   }
@@ -31,7 +30,7 @@
     margin: 5px;
     padding: 10px 20px;
     font-size: 18px;
-    background: #444;
+    background: #333;
     color: #fff;
     border: none;
     border-radius: 8px;
@@ -43,7 +42,7 @@
   #winMessage {
     position: absolute;
     top: 40%;
-    background: rgba(0,0,0,0.8);
+    background: rgba(0,0,0,0.85);
     padding: 20px;
     border-radius: 10px;
     font-size: 24px;
@@ -56,9 +55,7 @@
 <h1>Carrom Pool</h1>
 <div id="menu">
   <button onclick="restartGame()">Restart</button>
-  <label>Power:
-    <input type="range" id="powerSlider" min="5" max="20" value="10">
-  </label>
+  Power: <input type="range" id="powerSlider" min="5" max="20" value="10">
 </div>
 <canvas id="gameCanvas" width="400" height="400"></canvas>
 <div id="winMessage">🎉 You Win! <button onclick="restartGame()">Play Again</button></div>
@@ -75,19 +72,18 @@ let pucks = [];
 let dragging = false;
 let dragStart = null;
 let power = 10;
-const powerSlider = document.getElementById('powerSlider');
-powerSlider.oninput = () => { power = parseInt(powerSlider.value); }
+
+document.getElementById('powerSlider').oninput = e => power = parseInt(e.target.value);
 
 function initPucks() {
   pucks = [];
   const positions = [
     {x: 200, y: 200}, {x: 215, y: 200}, {x: 185, y: 200},
     {x: 200, y: 215}, {x: 200, y: 185}, {x: 215, y: 215},
-    {x: 185, y: 185}, {x: 215, y: 185}, {x: 185, y: 215},
-    {x: 200, y: 170}
+    {x: 185, y: 185}, {x: 215, y: 185}, {x: 185, y: 215}
   ];
   for (let i=0; i<positions.length; i++) {
-    pucks.push({x: positions[i].x, y: positions[i].y, r:8, color: i==0?'red': (i%2==0?'white':'black'), vx:0, vy:0});
+    pucks.push({x: positions[i].x, y: positions[i].y, r:8, color: (i==0?'red': (i%2==0?'white':'black')), vx:0, vy:0});
   }
 }
 
@@ -97,16 +93,24 @@ function restartGame() {
   document.getElementById('winMessage').style.display='none';
 }
 
-canvas.addEventListener('mousedown', e=>{
+function isOnStriker(x,y){
+  return Math.hypot(x - striker.x, y - striker.y) < striker.r+10;
+}
+
+// Mouse & touch support
+function getPos(e) {
   const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left, y = e.clientY - rect.top;
-  if (Math.hypot(x - striker.x, y - striker.y) < striker.r+10) {
-    dragging = true;
-    dragStart = {x, y};
-  }
+  if(e.touches) e = e.touches[0];
+  return {x: e.clientX - rect.left, y: e.clientY - rect.top};
+}
+
+canvas.addEventListener('mousedown', e=>{
+  const pos = getPos(e);
+  if (isOnStriker(pos.x,pos.y)) { dragging = true; dragStart = pos; }
 });
+canvas.addEventListener('mousemove', e=>{ if(dragging) dragStart=getPos(e); });
 canvas.addEventListener('mouseup', e=>{
-  if (dragging) {
+  if(dragging) {
     const dx = dragStart.x - striker.x;
     const dy = dragStart.y - striker.y;
     const len = Math.hypot(dx, dy);
@@ -116,46 +120,55 @@ canvas.addEventListener('mouseup', e=>{
   }
   dragging=false;
 });
-canvas.addEventListener('mousemove', e=>{
-  if (dragging) {
-    const rect = canvas.getBoundingClientRect();
-    dragStart = {x: e.clientX - rect.left, y: e.clientY - rect.top};
+
+// Touch
+canvas.addEventListener('touchstart', e=>{
+  const pos = getPos(e);
+  if (isOnStriker(pos.x,pos.y)) { dragging=true; dragStart=pos; }
+});
+canvas.addEventListener('touchmove', e=>{
+  if(dragging) { dragStart=getPos(e); e.preventDefault(); }
+});
+canvas.addEventListener('touchend', e=>{
+  if(dragging) {
+    const dx = dragStart.x - striker.x;
+    const dy = dragStart.y - striker.y;
+    const len = Math.hypot(dx, dy);
+    striker.vx = (dx/len)*power;
+    striker.vy = (dy/len)*power;
+    document.getElementById('strikeSound').play();
   }
+  dragging=false;
 });
 
 function draw() {
   ctx.clearRect(0,0,400,400);
+
   // draw pockets
   [0,400].forEach(x=>[0,400].forEach(y=>{
     ctx.beginPath();
     ctx.arc(x,y,15,0,Math.PI*2);
     ctx.fillStyle='#000'; ctx.fill();
   }));
+
   // draw pucks
   pucks.forEach(p=>{
     ctx.beginPath();
     ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
     ctx.fillStyle=p.color; ctx.fill();
   });
+
   // draw striker
   ctx.beginPath();
   ctx.arc(striker.x,striker.y,striker.r,0,Math.PI*2);
   ctx.fillStyle='navy'; ctx.fill();
 
   // aiming line
-  if (dragging) {
+  if(dragging){
     ctx.beginPath();
     ctx.moveTo(striker.x,striker.y);
     ctx.lineTo(dragStart.x,dragStart.y);
-    ctx.strokeStyle='yellow';
-    ctx.stroke();
-    // extra: line to nearest puck
-    const target = pucks[0];
-    ctx.beginPath();
-    ctx.moveTo(striker.x,striker.y);
-    ctx.lineTo(target.x,target.y);
-    ctx.strokeStyle='red';
-    ctx.stroke();
+    ctx.strokeStyle='yellow'; ctx.stroke();
   }
 }
 
@@ -167,12 +180,11 @@ function physics() {
     p.vx*=0.98; p.vy*=0.98;
   });
 
-  // collisions
+  // collisions striker with pucks
   pucks.forEach(p=>{
     const dx = striker.x - p.x, dy = striker.y - p.y;
     const dist = Math.hypot(dx, dy);
-    if (dist < striker.r + p.r) {
-      // simple elastic
+    if(dist< striker.r + p.r){
       const angle = Math.atan2(dy, dx);
       const speed = Math.hypot(striker.vx,striker.vy);
       p.vx = Math.cos(angle)*speed; p.vy = Math.sin(angle)*speed;
@@ -183,14 +195,12 @@ function physics() {
   // check pocket
   pucks = pucks.filter(p=>{
     if ([0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<15))){
-      document.getElementById('pocketSound').play();
-      return false;
+      document.getElementById('pocketSound').play(); return false;
     }
     return true;
   });
 
-  // win
-  if (pucks.length==0) {
+  if(pucks.length==0) {
     document.getElementById('winMessage').style.display='block';
     document.getElementById('winSound').play();
   }
@@ -200,7 +210,7 @@ function physics() {
   striker.y=Math.max(striker.r,Math.min(400-striker.r,striker.y));
 }
 
-function loop() {
+function loop(){
   physics(); draw();
   requestAnimationFrame(loop);
 }
@@ -208,6 +218,5 @@ function loop() {
 restartGame();
 loop();
 </script>
-
 </body>
 </html>
