@@ -67,7 +67,7 @@ const scoreEl = document.getElementById('score');
 const menuEl = document.getElementById('menu');
 const winEl = document.getElementById('win');
 
-let striker, coins, allBalls, score, dragging, dragStart, gameMode;
+let striker, coins, allBalls, score, dragging, dragStart, dragEnd, gameMode;
 
 function startGame(mode){
   gameMode = mode;
@@ -121,23 +121,30 @@ function startDrag(e){
     dragStart = pos;
   }
 }
+
 function dragMove(e){
   if(dragging){
     e.preventDefault();
-    dragStart = getPos(e);
+    dragEnd = getPos(e);
   }
 }
+
 function endDrag(e){
   if(dragging){
     e.preventDefault();
     dragging = false;
-    const pos = getPos(e);
-    let dx = striker.x - pos.x;
-    let dy = striker.y - pos.y;
-    let length = Math.hypot(dx, dy);
-    let force = Math.min(length/10, 6);
-    striker.dx = (dx/length)*force;
-    striker.dy = (dy/length)*force;
+    if(dragEnd){
+      let dx = striker.x - dragEnd.x;
+      let dy = striker.y - dragEnd.y;
+      let length = Math.hypot(dx, dy);
+      if(length>0){
+        let force = Math.min(length/10, 6); // fixed speed scaling
+        striker.dx = (dx/length)*force;
+        striker.dy = (dy/length)*force;
+      }
+    }
+    dragStart = null;
+    dragEnd = null;
   }
 }
 
@@ -250,11 +257,11 @@ function draw(){
   ctx.strokeStyle=striker.border;
   ctx.stroke();
 
-  if(dragging){
+  if(dragging && dragEnd){
     ctx.strokeStyle='cyan';
     ctx.beginPath();
     ctx.moveTo(striker.x,striker.y);
-    ctx.lineTo(dragStart.x,dragStart.y);
+    ctx.lineTo(dragEnd.x,dragEnd.y);
     ctx.stroke();
   }
 }
