@@ -197,9 +197,11 @@ function draw(){
   if(dragging){
     ctx.strokeStyle='yellow';
     ctx.beginPath(); ctx.moveTo(striker.x,striker.y); ctx.lineTo(dragEnd.x,dragEnd.y); ctx.stroke();
+
+    // guide line: make it longer now (150 instead of 100)
     let dx=dragEnd.x-striker.x, dy=dragEnd.y-striker.y, len=Math.hypot(dx,dy);
     if(len>0){
-      let ex=striker.x - dx/len*100, ey=striker.y - dy/len*100;
+      let ex=striker.x - dx/len*150, ey=striker.y - dy/len*150;
       ctx.setLineDash([5,5]);
       ctx.beginPath(); ctx.moveTo(striker.x,striker.y); ctx.lineTo(ex,ey); ctx.stroke();
       ctx.setLineDash([]);
