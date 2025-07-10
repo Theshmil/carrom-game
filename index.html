@@ -23,7 +23,7 @@
   ⚪ White: <span id="whiteScore">0</span> &nbsp; ⚫ Black: <span id="blackScore">0</span>
 </div>
 <canvas id="gameCanvas" width="400" height="400" style="display:none;"></canvas>
-<input type="range" id="slider" min="50" max="350" value="200" style="display:none;">
+<input type="range" id="slider" min="60" max="340" value="200" style="display:none;">
 <div id="winMessage">🎉 You Win! <button onclick="restartGame()">Play Again</button></div>
 <div id="aboutBox">Created by Theshmil & Sofa ❤️<br><br><button onclick="closeAbout()">Close</button></div>
 
@@ -31,7 +31,7 @@
 const canvas=document.getElementById('gameCanvas');
 const ctx=canvas.getContext('2d');
 const slider=document.getElementById('slider');
-let striker={x:200,y:360,r:12,vx:0,vy:0};
+let striker={x:200,y:360,r:14,vx:0,vy:0}; // bigger striker
 let pucks=[];
 let dragging=false, dragStart=null, dragEnd=null;
 let mode='';
@@ -40,16 +40,15 @@ let queenCovered=false, redPotted=false;
 
 function initPucks(){
   pucks=[];
-  // place red at center
-  pucks.push({x:200,y:200,r:10,color:'red',vx:0,vy:0});
-  // place other pucks around
+  pucks.push({x:200,y:200,r:12,color:'red',vx:0,vy:0}); // bigger red puck
+  // add more pucks around
   for(let i=0;i<6;i++){
     let angle=i*Math.PI/3;
-    pucks.push({x:200+20*Math.cos(angle), y:200+20*Math.sin(angle), r:10, color:i%2==0?'white':'black',vx:0,vy:0});
+    pucks.push({x:200+22*Math.cos(angle), y:200+22*Math.sin(angle), r:12, color:i%2==0?'white':'black',vx:0,vy:0});
   }
   for(let i=0;i<6;i++){
     let angle=i*Math.PI/3+Math.PI/6;
-    pucks.push({x:200+40*Math.cos(angle), y:200+40*Math.sin(angle), r:10, color:i%2==0?'black':'white',vx:0,vy:0});
+    pucks.push({x:200+44*Math.cos(angle), y:200+44*Math.sin(angle), r:12, color:i%2==0?'black':'white',vx:0,vy:0});
   }
 }
 
@@ -71,12 +70,8 @@ function startGame(selected){
   restartGame();
 }
 
-function showAbout(){
-  document.getElementById('aboutBox').style.display='block';
-}
-function closeAbout(){
-  document.getElementById('aboutBox').style.display='none';
-}
+function showAbout(){ document.getElementById('aboutBox').style.display='block'; }
+function closeAbout(){ document.getElementById('aboutBox').style.display='none'; }
 
 function getPos(e){
   const rect=canvas.getBoundingClientRect();
@@ -101,7 +96,7 @@ canvas.addEventListener('touchstart',e=>{
 canvas.addEventListener('touchmove',e=>{if(dragging){dragEnd=getPos(e); e.preventDefault();}});
 canvas.addEventListener('touchend',()=>{if(dragging){shoot();} dragging=false;});
 
-slider.addEventListener('input',()=>{striker.x=+slider.value;});
+slider.addEventListener('input',()=>{ striker.x=+slider.value; });
 
 function shoot(){
   const dx=dragEnd.x-dragStart.x, dy=dragEnd.y-dragStart.y;
@@ -145,9 +140,8 @@ function physics(){
     for(let j=i+1;j<pucks.length;j++)
       collide(pucks[i],pucks[j]);
 
-  // pocket check
   pucks=pucks.filter(p=>{
-    let pocketed=[0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<20));
+    let pocketed=[0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<25)); // bigger pocket
     if(pocketed){
       if(p.color=='red'){ redPotted=true; }
       else if(currentPlayer=='white' && p.color=='white'){ whiteScore++; queenCovered=redPotted?true:queenCovered; }
@@ -159,11 +153,10 @@ function physics(){
   document.getElementById('whiteScore').innerText=whiteScore;
   document.getElementById('blackScore').innerText=blackScore;
 
-  // if everything stopped, switch side
+  // switch side if everything stopped
   if([striker,...pucks].every(o=>o.vx==0&&o.vy==0) && striker.y!= (currentPlayer=='white'?360:40)){
     if(redPotted && !queenCovered){
-      // put red back
-      pucks.push({x:200,y:200,r:10,color:'red',vx:0,vy:0});
+      pucks.push({x:200,y:200,r:12,color:'red',vx:0,vy:0});
       redPotted=false;
     }
     currentPlayer=currentPlayer=='white'?'black':'white';
@@ -188,7 +181,7 @@ function draw(){
   ctx.clearRect(0,0,400,400);
   drawBoard();
   [0,400].forEach(x=>[0,400].forEach(y=>{
-    ctx.beginPath(); ctx.arc(x,y,20,0,2*Math.PI); ctx.fillStyle='#000'; ctx.fill();
+    ctx.beginPath(); ctx.arc(x,y,25,0,2*Math.PI); ctx.fillStyle='#000'; ctx.fill(); // bigger pockets
   }));
   pucks.forEach(p=>{
     ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,2*Math.PI); ctx.fillStyle=p.color; ctx.fill();
