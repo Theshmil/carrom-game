@@ -35,6 +35,7 @@ let pucks=[];
 let dragging=false, dragStart=null, dragEnd=null;
 let mode='', turn='white'; 
 let scores={white:0, black:0};
+let waitingForNextTurn=false; // NEW FLAG
 
 function initPucks(){
   pucks=[];
@@ -48,6 +49,7 @@ function restartGame(){
   scores.white=0; scores.black=0;
   updateScores();
   turn='white';
+  waitingForNextTurn=false;
   document.getElementById('winMessage').style.display='none';
 }
 
@@ -94,9 +96,10 @@ function shoot(){
   const dx=dragEnd.x-dragStart.x, dy=dragEnd.y-dragStart.y;
   const len=Math.hypot(dx,dy);
   if(len>5){
-    let speed=6; // fixed realistic speed
+    let speed=6;
     striker.vx=-(dx/len)*speed;
     striker.vy=-(dy/len)*speed;
+    waitingForNextTurn=true; // start waiting
   }
 }
 
@@ -144,8 +147,9 @@ function physics(){
     return true;
   });
 
-  // Check if striker and pucks stopped moving → switch turn
-  if(striker.vx==0 && striker.vy==0 && pucks.every(p=>p.vx==0 && p.vy==0)){
+  // only switch turn when everything stopped and waitingForNextTurn is true
+  if(waitingForNextTurn && striker.vx==0 && striker.vy==0 && pucks.every(p=>p.vx==0 && p.vy==0)){
+    waitingForNextTurn=false;
     switchTurn();
   }
 
@@ -171,7 +175,7 @@ function drawBoard(){
   ctx.beginPath(); ctx.moveTo(50,50); ctx.lineTo(350,350);
   ctx.moveTo(350,50); ctx.lineTo(50,350); ctx.stroke();
 
-  ctx.strokeRect(40,40,320,320); // decorative border
+  ctx.strokeRect(40,40,320,320);
 }
 
 function draw(){
