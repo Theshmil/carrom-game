@@ -1,43 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Carrom Pool</title>
 <style>
   body { margin:0; background:#111; color:#fff; font-family:sans-serif; text-align:center; }
-  canvas { background:#d2b48c; border:10px solid #fff; border-radius:20px; touch-action:none; display:block; margin:0 auto; }
-  #menu { margin-top:20px; }
-  #menu button { margin:8px; padding:12px 25px; font-size:18px; background:#fff; color:#000; border:none; border-radius:8px; cursor:pointer; }
-  #scoreboard { margin-top:8px; font-size:16px; }
-  #sliderContainer { margin:8px auto; width:60%; }
-  #slider {
-    width:100%; height:10px; border-radius:5px; background:#333;
-    outline:none; appearance:none;
-  }
-  #slider::-webkit-slider-thumb {
-    width:20px; height:20px; background:#00ffcc;
-    border-radius:50%; cursor:pointer; border:2px solid #fff;
-  }
-  #winMessage, #aboutBox {
-    position:absolute; top:40%; left:50%; transform:translate(-50%,-50%);
-    background:rgba(0,0,0,0.8); padding:20px; border-radius:10px; font-size:18px; display:none;
-  }
+  canvas { background:#d2b48c; border:8px solid #fff; border-radius:20px; touch-action:none; }
+  #menu { margin-top:30px; }
+  #menu button { margin:10px; padding:12px 25px; font-size:18px; background:#fff; color:#000; border:none; border-radius:8px; cursor:pointer; }
+  #winMessage, #aboutBox { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.8); padding:20px; border-radius:10px; font-size:20px; display:none; }
+  #slider { width: 60%; margin:10px auto; }
+  #score { margin-top:5px; }
 </style>
 </head>
 <body>
 <h1>Carrom Pool</h1>
+<div id="score">⚪ White: <span id="whiteScore">0</span> ⚫ Black: <span id="blackScore">0</span></div>
 <div id="menu">
-  <button onclick="startGame()">Play</button>
+  <button onclick="startGame('local')">Local Multiplayer</button>
+  <button onclick="startGame('ai')">Play vs AI 🤖</button>
   <button onclick="showAbout()">About</button>
 </div>
-<div id="scoreboard" style="display:none;">
-  ⚪ White: <span id="whiteScore">0</span> &nbsp;&nbsp; ⚫ Black: <span id="blackScore">0</span>
-</div>
 <canvas id="gameCanvas" width="400" height="400" style="display:none;"></canvas>
-<div id="sliderContainer" style="display:none;">
-  <input type="range" id="slider" min="80" max="320" value="200">
-</div>
+<input type="range" id="slider" min="50" max="350" value="200" style="display:none;">
 <div id="winMessage">🎉 You Win! <button onclick="restartGame()">Play Again</button></div>
 <div id="aboutBox">Created by Theshmil & Sofa ❤️<br><br><button onclick="closeAbout()">Close</button></div>
 
@@ -45,81 +31,56 @@
 const canvas=document.getElementById('gameCanvas');
 const ctx=canvas.getContext('2d');
 const slider=document.getElementById('slider');
-let striker={x:200,y:360,r:16,vx:0,vy:0};
+let striker={x:200,y:360,r:12,vx:0,vy:0};
 let pucks=[];
 let dragging=false, dragStart=null, dragEnd=null;
-let turn='white';
-let scores={white:0, black:0};
-let waiting=false;
-let gameStarted=false;
+let mode='', turn='white';
+let whiteScore=0, blackScore=0;
 
 function initPucks(){
   pucks=[];
-  const center=200;
-  const layers=[
-    ['red'],
-    ['white','black','white','black','white','black'],
-    ['white','black','white','black','white','black','white','black','white','black']
-  ];
-  let radiusStep=18;
-  let currentRadius=0;
-  layers.forEach((layer,layerIdx)=>{
-    if(layerIdx===0){
-      pucks.push({x:center,y:center,r:12,color:'red',vx:0,vy:0});
-    } else {
-      currentRadius+=radiusStep;
-      let angle=0;
-      let step=2*Math.PI/layer.length;
-      layer.forEach(color=>{
-        let x=center+Math.cos(angle)*currentRadius;
-        let y=center+Math.sin(angle)*currentRadius;
-        pucks.push({x,y,r:12,color,vx:0,vy:0});
-        angle+=step;
-      });
-    }
-  });
-}
-
-function updateScores(){
-  document.getElementById('whiteScore').innerText=scores.white;
-  document.getElementById('blackScore').innerText=scores.black;
+  const centerX=200, centerY=200;
+  const radius=30;
+  let colors=['black','white','black','white','black','white','black','white','black','white','black','white'];
+  let angleStep=Math.PI*2/colors.length;
+  for(let i=0;i<colors.length;i++){
+    let angle=i*angleStep;
+    let x=centerX+Math.cos(angle)*radius;
+    let y=centerY+Math.sin(angle)*radius;
+    pucks.push({x,y,r:10,color:colors[i],vx:0,vy:0});
+  }
+  // Red puck in center
+  pucks.push({x:centerX,y:centerY,r:10,color:'red',vx:0,vy:0});
 }
 
 function restartGame(){
-  striker={x:200,y:360,r:16,vx:0,vy:0};
-  initPucks();
-  scores={white:0, black:0};
-  updateScores();
-  waiting=false;
+  whiteScore=0; blackScore=0;
+  document.getElementById('whiteScore').textContent=whiteScore;
+  document.getElementById('blackScore').textContent=blackScore;
+  striker.x=200; striker.y=360; striker.vx=0; striker.vy=0;
   turn='white';
   slider.value=200;
-  updateSliderPos();
+  initPucks();
   document.getElementById('winMessage').style.display='none';
 }
 
-function startGame(){
-  gameStarted=true;
+function startGame(selected){
+  mode=selected;
   document.getElementById('menu').style.display='none';
-  document.getElementById('scoreboard').style.display='block';
   canvas.style.display='block';
-  document.getElementById('sliderContainer').style.display='block';
+  slider.style.display='block';
   restartGame();
 }
 
-function showAbout(){ document.getElementById('aboutBox').style.display='block'; }
-function closeAbout(){ document.getElementById('aboutBox').style.display='none'; }
-
-function updateSliderPos(){
-  striker.x=parseInt(slider.value);
+function showAbout(){
+  document.getElementById('aboutBox').style.display='block';
+}
+function closeAbout(){
+  document.getElementById('aboutBox').style.display='none';
 }
 
 slider.addEventListener('input',()=>{
-  let newX=parseInt(slider.value);
-  let safe=true;
-  for(let p of pucks){
-    if(Math.hypot(p.x-newX,p.y-striker.y)<p.r+striker.r+2){safe=false;break;}
-  }
-  if(safe) striker.x=newX;
+  striker.x=parseInt(slider.value);
 });
 
 function getPos(e){
@@ -129,33 +90,28 @@ function getPos(e){
 }
 
 canvas.addEventListener('mousedown',e=>{
-  if(!waiting){
-    let pos=getPos(e);
-    if(Math.hypot(pos.x-striker.x,pos.y-striker.y)<striker.r+10){
-      dragging=true; dragStart=pos; dragEnd=pos;
-    }
+  let pos=getPos(e);
+  if(Math.hypot(pos.x-striker.x,pos.y-striker.y)<striker.r+10){
+    dragging=true; dragStart=pos; dragEnd=pos;
   }
 });
 canvas.addEventListener('mousemove',e=>{if(dragging) dragEnd=getPos(e);});
 canvas.addEventListener('mouseup',e=>{if(dragging){shoot();} dragging=false;});
 canvas.addEventListener('touchstart',e=>{
-  if(!waiting){
-    let pos=getPos(e);
-    if(Math.hypot(pos.x-striker.x,pos.y-striker.y)<striker.r+10){
-      dragging=true; dragStart=pos; dragEnd=pos;
-    }
+  let pos=getPos(e);
+  if(Math.hypot(pos.x-striker.x,pos.y-striker.y)<striker.r+10){
+    dragging=true; dragStart=pos; dragEnd=pos;
   }
 });
-canvas.addEventListener('touchmove',e=>{if(dragging) dragEnd=getPos(e); e.preventDefault();});
+canvas.addEventListener('touchmove',e=>{if(dragging){dragEnd=getPos(e); e.preventDefault();}});
 canvas.addEventListener('touchend',e=>{if(dragging){shoot();} dragging=false;});
 
 function shoot(){
   const dx=dragEnd.x-dragStart.x, dy=dragEnd.y-dragStart.y;
   const len=Math.hypot(dx,dy);
   if(len>5){
-    striker.vx=-(dx/len)*8;
-    striker.vy=-(dy/len)*8;
-    waiting=true;
+    striker.vx=-(dx/len)*5;
+    striker.vy=-(dy/len)*5;
   }
 }
 
@@ -164,39 +120,23 @@ function collide(a,b){
   let dist=Math.hypot(dx,dy);
   if(dist< a.r+b.r){
     let nx=dx/dist, ny=dy/dist;
-    let p=2*((a.vx*nx+a.vy*ny)-(b.vx*nx+b.vy*ny))/2;
-    a.vx-=p*nx; a.vy-=p*ny;
-    b.vx+=p*nx; b.vy+=p*ny;
-    let overlap=(a.r+b.r-dist)/2;
-    a.x-=nx*overlap; a.y-=ny*overlap;
-    b.x+=nx*overlap; b.y+=ny*overlap;
-  }
-}
+    let p=2*((a.vx*nx+a.vy*ny)-(b.vx*nx+b.vy*ny))/(1+1);
+    a.vx -= p*nx; a.vy -= p*ny;
+    b.vx += p*nx; b.vy += p*ny;
 
-function findSafeStrikerX(yPos){
-  let x=200;
-  let step=5;
-  for(let offset=0; offset<120; offset+=step){
-    for(let dir of [-1,1]){
-      let tryX=200+dir*offset;
-      let safe=true;
-      for(let p of pucks){
-        if(Math.hypot(p.x-tryX,p.y - yPos)<p.r+striker.r+2){safe=false;break;}
-      }
-      if(safe) return tryX;
-    }
+    let overlap=(a.r+b.r-dist)/2;
+    a.x -= nx*overlap; a.y -= ny*overlap;
+    b.x += nx*overlap; b.y += ny*overlap;
   }
-  return 200; // fallback
 }
 
 function physics(){
-  if(!gameStarted) return;
-
   [striker,...pucks].forEach(obj=>{
     obj.x+=obj.vx; obj.y+=obj.vy;
     obj.vx*=0.98; obj.vy*=0.98;
     if(Math.abs(obj.vx)<0.05) obj.vx=0;
     if(Math.abs(obj.vy)<0.05) obj.vy=0;
+
     if(obj.x<obj.r){obj.x=obj.r; obj.vx*=-1;}
     if(obj.x>400-obj.r){obj.x=400-obj.r; obj.vx*=-1;}
     if(obj.y<obj.r){obj.y=obj.r; obj.vy*=-1;}
@@ -208,62 +148,69 @@ function physics(){
     for(let j=i+1;j<pucks.length;j++)
       collide(pucks[i],pucks[j]);
 
+  // Remove pucks in pockets
   pucks=pucks.filter(p=>{
-    if([0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<30))){
-      if(p.color=='white') scores.white++;
-      else if(p.color=='black') scores.black++;
-      updateScores(); return false;
+    if([0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px, p.y-py)<20))){
+      if(p.color=='white') whiteScore++;
+      else if(p.color=='black') blackScore++;
+      document.getElementById('whiteScore').textContent=whiteScore;
+      document.getElementById('blackScore').textContent=blackScore;
+      return false;
     }
     return true;
   });
 
-  if(waiting && striker.vx==0 && striker.vy==0 && pucks.every(p=>p.vx==0 && p.vy==0)){
-    waiting=false;
-    turn=(turn=='white')?'black':'white';
-    striker.y=(turn=='white'?360:40);
-    striker.x=findSafeStrikerX(striker.y);
-    slider.value=striker.x;
-  }
-
   if(pucks.length==0) document.getElementById('winMessage').style.display='block';
+
+  // Switch side if striker & pucks stopped
+  if(striker.vx==0&&striker.vy==0 && pucks.every(p=>p.vx==0&&p.vy==0)){
+    if(turn=='white'){ striker.y=40; turn='black'; }
+    else{ striker.y=360; turn='white'; }
+  }
 }
 
 function drawBoard(){
   ctx.fillStyle='#d2b48c'; ctx.fillRect(0,0,400,400);
   ctx.strokeStyle='brown'; ctx.lineWidth=2;
-  ctx.strokeRect(40,40,320,320);
-  ctx.beginPath(); ctx.moveTo(40,40); ctx.lineTo(360,360);
-  ctx.moveTo(360,40); ctx.lineTo(40,360); ctx.stroke();
   ctx.beginPath(); ctx.arc(200,200,50,0,2*Math.PI); ctx.stroke();
-  ctx.beginPath(); ctx.arc(200,200,30,0,2*Math.PI); ctx.stroke();
-  ctx.fillStyle='black';
-  [0,400].forEach(x=>[0,400].forEach(y=>{
-    ctx.beginPath(); ctx.arc(x,y,30,0,2*Math.PI); ctx.fill();
-  }));
+  ctx.beginPath(); ctx.moveTo(50,50); ctx.lineTo(350,350);
+  ctx.moveTo(350,50); ctx.lineTo(50,350); ctx.stroke();
 }
 
 function draw(){
   ctx.clearRect(0,0,400,400);
   drawBoard();
+  [0,400].forEach(x=>[0,400].forEach(y=>{
+    ctx.beginPath(); ctx.arc(x,y,20,0,2*Math.PI); ctx.fillStyle='#000'; ctx.fill();
+  }));
   pucks.forEach(p=>{
     ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,2*Math.PI); ctx.fillStyle=p.color; ctx.fill();
   });
   ctx.beginPath(); ctx.arc(striker.x,striker.y,striker.r,0,2*Math.PI); ctx.fillStyle='navy'; ctx.fill();
 
   if(dragging){
-    ctx.strokeStyle='yellow'; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.moveTo(striker.x,striker.y); ctx.lineTo(dragEnd.x,dragEnd.y); ctx.stroke();
     let dx=dragEnd.x-striker.x, dy=dragEnd.y-striker.y, len=Math.hypot(dx,dy);
+    let grad=ctx.createLinearGradient(striker.x,striker.y,dragEnd.x,dragEnd.y);
+    grad.addColorStop(0,'cyan'); grad.addColorStop(1,'rgba(0,255,255,0)');
+    ctx.strokeStyle=grad;
+    ctx.lineWidth=4; ctx.shadowBlur=5; ctx.shadowColor='cyan';
+    ctx.beginPath(); ctx.moveTo(striker.x,striker.y); ctx.lineTo(dragEnd.x,dragEnd.y); ctx.stroke();
+    ctx.shadowBlur=0;
+
     if(len>0){
       let ex=striker.x - dx/len*100, ey=striker.y - dy/len*100;
-      ctx.setLineDash([4,4]);
-      ctx.strokeStyle='cyan'; ctx.beginPath(); ctx.moveTo(striker.x,striker.y); ctx.lineTo(ex,ey); ctx.stroke();
+      ctx.setLineDash([6,6]);
+      ctx.strokeStyle='rgba(0,255,255,0.8)'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(striker.x,striker.y); ctx.lineTo(ex,ey); ctx.stroke();
       ctx.setLineDash([]);
     }
   }
 }
 
-function loop(){ physics(); draw(); requestAnimationFrame(loop);}
+function loop(){
+  if(mode){ physics(); draw(); }
+  requestAnimationFrame(loop);
+}
 loop();
 </script>
 </body>
