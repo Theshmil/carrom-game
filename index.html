@@ -37,7 +37,7 @@ let dragging=false, dragStart=null, dragEnd=null;
 let mode='';
 let currentPlayer='white', whiteScore=0, blackScore=0;
 let queenCovered=false, redPotted=false;
-let shotInProgress=false; // <-- new flag
+let shotInProgress=false;
 
 function initPucks(){
   pucks=[];
@@ -97,8 +97,15 @@ canvas.addEventListener('touchstart',e=>{
 canvas.addEventListener('touchmove',e=>{if(dragging){dragEnd=getPos(e); e.preventDefault();}});
 canvas.addEventListener('touchend',()=>{if(dragging){shoot();} dragging=false;});
 
+// ✅ Fix: avoid striker overlapping pucks when sliding
 slider.addEventListener('input',()=>{
-  striker.x=+slider.value;
+  let newX=+slider.value;
+  let overlap=pucks.some(p=>Math.hypot(newX - p.x, striker.y - p.y) < striker.r + p.r);
+  if(!overlap){
+    striker.x=newX;
+  } else {
+    slider.value=striker.x; // revert slider to current striker x
+  }
 });
 
 function shoot(){
@@ -107,7 +114,7 @@ function shoot(){
   if(len>5){
     striker.vx=-(dx/len)*6;
     striker.vy=-(dy/len)*6;
-    shotInProgress=true; // start shot
+    shotInProgress=true;
   }
 }
 
@@ -137,7 +144,7 @@ function physics(){
     if(obj.y>400-obj.r){obj.y=400-obj.r; obj.vy*=-1;}
   });
 
-  if(shotInProgress){ // only do collisions if shot was taken
+  if(shotInProgress){
     pucks.forEach(p=>collide(striker,p));
     for(let i=0;i<pucks.length;i++)
       for(let j=i+1;j<pucks.length;j++)
@@ -173,15 +180,10 @@ function physics(){
 
 function drawBoard(){
   ctx.fillStyle='#deb887'; ctx.fillRect(0,0,400,400);
-  ctx.fillStyle='rgba(255,255,255,0.2)';
-  ctx.fillRect(10,10,380,380);
   ctx.strokeStyle='#8b4513'; ctx.lineWidth=4;
   ctx.strokeRect(20,20,360,360);
   ctx.strokeStyle='#654321'; ctx.lineWidth=2;
   ctx.beginPath(); ctx.arc(200,200,50,0,2*Math.PI); ctx.stroke();
-  ctx.beginPath(); ctx.arc(200,200,30,0,2*Math.PI); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(40,40); ctx.lineTo(360,360);
-  ctx.moveTo(360,40); ctx.lineTo(40,360); ctx.stroke();
 }
 
 function draw(){
@@ -197,8 +199,7 @@ function draw(){
     ctx.fill(); ctx.shadowBlur=0;
   });
   ctx.beginPath(); ctx.arc(striker.x,striker.y,striker.r,0,2*Math.PI);
-  ctx.fillStyle='navy'; ctx.shadowColor='rgba(0,0,0,0.4)'; ctx.shadowBlur=4;
-  ctx.fill(); ctx.shadowBlur=0;
+  ctx.fillStyle='navy'; ctx.fill();
 
   if(dragging){
     ctx.strokeStyle='yellow';
