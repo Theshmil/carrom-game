@@ -37,6 +37,7 @@ let dragging=false, dragStart=null, dragEnd=null;
 let mode='';
 let currentPlayer='white', whiteScore=0, blackScore=0;
 let queenCovered=false, redPotted=false;
+let shotInProgress=false; // <-- new flag
 
 function initPucks(){
   pucks=[];
@@ -55,6 +56,7 @@ function restartGame(){
   striker.x=200; striker.y=360; striker.vx=0; striker.vy=0;
   currentPlayer='white'; whiteScore=0; blackScore=0;
   queenCovered=false; redPotted=false;
+  shotInProgress=false;
   initPucks();
   document.getElementById('winMessage').style.display='none';
   document.getElementById('whiteScore').innerText=whiteScore;
@@ -95,7 +97,9 @@ canvas.addEventListener('touchstart',e=>{
 canvas.addEventListener('touchmove',e=>{if(dragging){dragEnd=getPos(e); e.preventDefault();}});
 canvas.addEventListener('touchend',()=>{if(dragging){shoot();} dragging=false;});
 
-slider.addEventListener('input',()=>{ striker.x=+slider.value; });
+slider.addEventListener('input',()=>{
+  striker.x=+slider.value;
+});
 
 function shoot(){
   const dx=dragEnd.x-dragStart.x, dy=dragEnd.y-dragStart.y;
@@ -103,6 +107,7 @@ function shoot(){
   if(len>5){
     striker.vx=-(dx/len)*6;
     striker.vy=-(dy/len)*6;
+    shotInProgress=true; // start shot
   }
 }
 
@@ -132,10 +137,12 @@ function physics(){
     if(obj.y>400-obj.r){obj.y=400-obj.r; obj.vy*=-1;}
   });
 
-  pucks.forEach(p=>collide(striker,p));
-  for(let i=0;i<pucks.length;i++)
-    for(let j=i+1;j<pucks.length;j++)
-      collide(pucks[i],pucks[j]);
+  if(shotInProgress){ // only do collisions if shot was taken
+    pucks.forEach(p=>collide(striker,p));
+    for(let i=0;i<pucks.length;i++)
+      for(let j=i+1;j<pucks.length;j++)
+        collide(pucks[i],pucks[j]);
+  }
 
   pucks=pucks.filter(p=>{
     let pocketed=[0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<25));
@@ -150,7 +157,8 @@ function physics(){
   document.getElementById('whiteScore').innerText=whiteScore;
   document.getElementById('blackScore').innerText=blackScore;
 
-  if([striker,...pucks].every(o=>o.vx==0&&o.vy==0) && striker.y!= (currentPlayer=='white'?360:40)){
+  if(shotInProgress && [striker,...pucks].every(o=>o.vx==0&&o.vy==0)){
+    shotInProgress=false;
     if(redPotted && !queenCovered){
       pucks.push({x:200,y:200,r:12,color:'red',vx:0,vy:0});
       redPotted=false;
@@ -169,11 +177,9 @@ function drawBoard(){
   ctx.fillRect(10,10,380,380);
   ctx.strokeStyle='#8b4513'; ctx.lineWidth=4;
   ctx.strokeRect(20,20,360,360);
-
   ctx.strokeStyle='#654321'; ctx.lineWidth=2;
   ctx.beginPath(); ctx.arc(200,200,50,0,2*Math.PI); ctx.stroke();
   ctx.beginPath(); ctx.arc(200,200,30,0,2*Math.PI); ctx.stroke();
-
   ctx.beginPath(); ctx.moveTo(40,40); ctx.lineTo(360,360);
   ctx.moveTo(360,40); ctx.lineTo(40,360); ctx.stroke();
 }
@@ -197,8 +203,6 @@ function draw(){
   if(dragging){
     ctx.strokeStyle='yellow';
     ctx.beginPath(); ctx.moveTo(striker.x,striker.y); ctx.lineTo(dragEnd.x,dragEnd.y); ctx.stroke();
-
-    // guide line: make it longer now (150 instead of 100)
     let dx=dragEnd.x-striker.x, dy=dragEnd.y-striker.y, len=Math.hypot(dx,dy);
     if(len>0){
       let ex=striker.x - dx/len*150, ey=striker.y - dy/len*150;
