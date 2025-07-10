@@ -7,10 +7,8 @@
 <style>
   body { margin:0; background:#111; color:#fff; font-family:sans-serif; text-align:center; }
   canvas { background:#d2b48c; border:8px solid #fff; border-radius:20px; touch-action:none; }
-  #menu { margin-top:30px; }
-  #menu button { margin:10px; padding:12px 25px; font-size:18px; background:#fff; color:#000; border:none; border-radius:10px; cursor:pointer; }
-  #sliderContainer { margin-top:10px; display:none; }
-  input[type=range] { width:200px; }
+  #menu { margin-top:50px; }
+  #menu button { margin:10px; padding:15px 30px; font-size:20px; background:#fff; color:#000; border:none; border-radius:10px; cursor:pointer; }
   #winMessage, #aboutBox { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.8); padding:20px; border-radius:10px; font-size:20px; display:none; }
 </style>
 </head>
@@ -22,20 +20,16 @@
   <button onclick="showAbout()">About</button>
 </div>
 <canvas id="gameCanvas" width="400" height="400" style="display:none;"></canvas>
-<div id="sliderContainer">
-  <input type="range" id="strikerSlider" min="60" max="340" value="200">
-</div>
 <div id="winMessage">🎉 You Win! <button onclick="restartGame()">Play Again</button></div>
 <div id="aboutBox">Created by Theshmil & Sofa ❤️<br><br><button onclick="closeAbout()">Close</button></div>
 
 <script>
 const canvas=document.getElementById('gameCanvas');
 const ctx=canvas.getContext('2d');
-const slider=document.getElementById('strikerSlider');
-let striker={x:200,y:360,r:12,vx:0,vy:0};
-let pucks=[], dragging=false, dragStart=null, dragEnd=null;
-let mode='', turn=0; // 0: player1 bottom, 1: player2 top
-let waitingForNextTurn=true;
+let striker={x:200,y:360,r:12,vx:0,vy:0};  
+let pucks=[];
+let dragging=false, dragStart=null, dragEnd=null;
+let mode='';
 
 function initPucks(){
   pucks=[];
@@ -45,10 +39,8 @@ function initPucks(){
 
 function restartGame(){
   striker.x=200; striker.y=360; striker.vx=0; striker.vy=0;
-  slider.value=200; turn=0; waitingForNextTurn=true;
   initPucks();
   document.getElementById('winMessage').style.display='none';
-  slider.style.display='block';
 }
 
 function startGame(selected){
@@ -58,10 +50,8 @@ function startGame(selected){
   restartGame();
 }
 
-function showAbout(){document.getElementById('aboutBox').style.display='block';}
-function closeAbout(){document.getElementById('aboutBox').style.display='none';}
-
-slider.addEventListener('input',()=>{ if(waitingForNextTurn){ striker.x=+slider.value; } });
+function showAbout(){ document.getElementById('aboutBox').style.display='block'; }
+function closeAbout(){ document.getElementById('aboutBox').style.display='none'; }
 
 function getPos(e){
   const rect=canvas.getBoundingClientRect();
@@ -69,35 +59,45 @@ function getPos(e){
   return {x:e.clientX-rect.left,y:e.clientY-rect.top};
 }
 
-canvas.addEventListener('mousedown',e=>{if(waitingForNextTurn&&isNearStriker(getPos(e))){dragging=true; dragStart=getPos(e); dragEnd=dragStart;}});
+canvas.addEventListener('mousedown',e=>{
+  let pos=getPos(e);
+  if(Math.hypot(pos.x-striker.x,pos.y-striker.y)<striker.r+10){
+    dragging=true; dragStart=pos; dragEnd=pos;
+  }
+});
 canvas.addEventListener('mousemove',e=>{if(dragging) dragEnd=getPos(e);});
 canvas.addEventListener('mouseup',e=>{if(dragging){shoot();} dragging=false;});
-canvas.addEventListener('touchstart',e=>{if(waitingForNextTurn&&isNearStriker(getPos(e))){dragging=true; dragStart=getPos(e); dragEnd=dragStart;}});
+canvas.addEventListener('touchstart',e=>{
+  let pos=getPos(e);
+  if(Math.hypot(pos.x-striker.x,pos.y-striker.y)<striker.r+10){
+    dragging=true; dragStart=pos; dragEnd=pos;
+  }
+});
 canvas.addEventListener('touchmove',e=>{if(dragging){dragEnd=getPos(e); e.preventDefault();}});
 canvas.addEventListener('touchend',e=>{if(dragging){shoot();} dragging=false;});
 
-function isNearStriker(pos){return Math.hypot(pos.x-striker.x,pos.y-striker.y)<striker.r+10;}
 function shoot(){
-  const dx=dragEnd.x-dragStart.x, dy=dragEnd.y-dragStart.y, len=Math.hypot(dx,dy);
-  if(len>5){ 
-    striker.vx=-(dx/len)*6; striker.vy=-(dy/len)*6; 
-    slider.style.display='none'; 
-    waitingForNextTurn=false;
+  const dx=dragEnd.x-dragStart.x, dy=dragEnd.y-dragStart.y;
+  const len=Math.hypot(dx,dy);
+  if(len>5){
+    striker.vx=-(dx/len)*6;
+    striker.vy=-(dy/len)*6;
   }
 }
 
 function collide(a,b){
-  let dx=b.x - a.x, dy=b.y - a.y, dist=Math.hypot(dx,dy);
+  let dx=b.x - a.x, dy=b.y - a.y;
+  let dist=Math.hypot(dx,dy);
   if(dist< a.r+b.r){
     let nx=dx/dist, ny=dy/dist;
-    let p=2*((a.vx*nx+a.vy*ny)-(b.vx*nx+b.vy*ny))/2;
-    a.vx -= p*nx; a.vy -= p*ny; b.vx += p*nx; b.vy += p*ny;
-    let overlap=(a.r+b.r-dist)/2; a.x-=nx*overlap; a.y-=ny*overlap; b.x+=nx*overlap; b.y+=ny*overlap;
-  }
-}
+    let p=2*((a.vx*nx+a.vy*ny)-(b.vx*nx+b.vy*ny))/(1+1);
+    a.vx -= p*nx; a.vy -= p*ny;
+    b.vx += p*nx; b.vy += p*ny;
 
-function allStopped(){
-  return Math.abs(striker.vx)<0.1&&Math.abs(striker.vy)<0.1 && pucks.every(p=>Math.abs(p.vx)<0.1&&Math.abs(p.vy)<0.1);
+    let overlap=(a.r+b.r-dist)/2;
+    a.x -= nx*overlap; a.y -= ny*overlap;
+    b.x += nx*overlap; b.y += ny*overlap;
+  }
 }
 
 function physics(){
@@ -106,54 +106,60 @@ function physics(){
     obj.vx*=0.98; obj.vy*=0.98;
     if(Math.abs(obj.vx)<0.05) obj.vx=0;
     if(Math.abs(obj.vy)<0.05) obj.vy=0;
+
     if(obj.x<obj.r){obj.x=obj.r; obj.vx*=-1;}
     if(obj.x>400-obj.r){obj.x=400-obj.r; obj.vx*=-1;}
     if(obj.y<obj.r){obj.y=obj.r; obj.vy*=-1;}
     if(obj.y>400-obj.r){obj.y=400-obj.r; obj.vy*=-1;}
   });
-  pucks.forEach(p=>collide(striker,p));
-  for(let i=0;i<pucks.length;i++) for(let j=i+1;j<pucks.length;j++) collide(pucks[i],pucks[j]);
 
-  if(!waitingForNextTurn && allStopped()){ 
-    turn=1-turn; striker.y=turn==0?360:40; slider.value=striker.x;
-    slider.style.display='block'; waitingForNextTurn=true;
-  }
+  pucks.forEach(p=>collide(striker,p));
+  for(let i=0;i<pucks.length;i++)
+    for(let j=i+1;j<pucks.length;j++)
+      collide(pucks[i],pucks[j]);
+
+  pucks=pucks.filter(p=>{
+    if([0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<20))) return false;
+    return true;
+  });
+
+  if(pucks.length==0) document.getElementById('winMessage').style.display='block';
 }
 
 function drawBoard(){
   ctx.fillStyle='#d2b48c'; ctx.fillRect(0,0,400,400);
+
+  // corner pockets
+  ctx.fillStyle='black';
+  [0,400].forEach(x=>[0,400].forEach(y=>{
+    ctx.beginPath(); ctx.arc(x,y,20,0,2*Math.PI); ctx.fill();
+  }));
+
+  // center circles
   ctx.strokeStyle='brown'; ctx.lineWidth=2;
-  // carrom circles
   ctx.beginPath(); ctx.arc(200,200,50,0,2*Math.PI); ctx.stroke();
   ctx.beginPath(); ctx.arc(200,200,30,0,2*Math.PI); ctx.stroke();
-  ctx.beginPath(); ctx.arc(200,200,10,0,2*Math.PI); ctx.stroke();
-  // diagonals
-  ctx.moveTo(50,50); ctx.lineTo(350,350); ctx.moveTo(350,50); ctx.lineTo(50,350); ctx.stroke();
-  // horizontal baselines to show striker range
-  ctx.strokeStyle='black'; ctx.lineWidth=1;
-  ctx.beginPath();
-  ctx.moveTo(60,40); ctx.lineTo(340,40);
-  ctx.moveTo(60,360); ctx.lineTo(340,360);
-  ctx.stroke();
+
+  // diagonal arrows
+  ctx.beginPath(); ctx.moveTo(50,50); ctx.lineTo(350,350);
+  ctx.moveTo(350,50); ctx.lineTo(50,350); ctx.stroke();
+
+  // decorative border lines
+  ctx.strokeRect(40,40,320,320);
 }
 
 function draw(){
   ctx.clearRect(0,0,400,400);
   drawBoard();
-  [0,400].forEach(x=>[0,400].forEach(y=>{
-    ctx.beginPath(); ctx.arc(x,y,20,0,2*Math.PI); ctx.fillStyle='#000'; ctx.fill();
-  }));
   pucks.forEach(p=>{
     ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,2*Math.PI); ctx.fillStyle=p.color; ctx.fill();
   });
   ctx.beginPath(); ctx.arc(striker.x,striker.y,striker.r,0,2*Math.PI); ctx.fillStyle='navy'; ctx.fill();
 
   if(dragging){
-    // drag line
     ctx.strokeStyle='yellow';
     ctx.beginPath(); ctx.moveTo(striker.x,striker.y); ctx.lineTo(dragEnd.x,dragEnd.y); ctx.stroke();
-    // guide line
-    let dx=dragEnd.x - striker.x, dy=dragEnd.y - striker.y, len=Math.hypot(dx,dy);
+    let dx=dragEnd.x-striker.x, dy=dragEnd.y-striker.y, len=Math.hypot(dx,dy);
     if(len>0){
       let ex=striker.x - dx/len*100, ey=striker.y - dy/len*100;
       ctx.setLineDash([5,5]);
@@ -163,7 +169,10 @@ function draw(){
   }
 }
 
-function loop(){ if(mode){ physics(); draw(); } requestAnimationFrame(loop); }
+function loop(){
+  if(mode){ physics(); draw(); }
+  requestAnimationFrame(loop);
+}
 loop();
 </script>
 </body>
