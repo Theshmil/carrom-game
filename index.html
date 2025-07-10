@@ -35,12 +35,18 @@ let pucks=[];
 let dragging=false, dragStart=null, dragEnd=null;
 let mode='', turn='white'; 
 let scores={white:0, black:0};
-let waitingForNextTurn=false; // NEW FLAG
+let waitingForNextTurn=false;
 
 function initPucks(){
   pucks=[];
-  const pos=[{x:200,y:200},{x:215,y:200},{x:185,y:200},{x:200,y:215},{x:200,y:185},{x:215,y:215},{x:185,y:185},{x:215,y:185},{x:185,y:215}];
-  pos.forEach((p,i)=>pucks.push({x:p.x,y:p.y,r:10,color:i==0?'red':i%2==0?'white':'black',vx:0,vy:0}));
+  const colors = ['red','white','white','white','white','black','black','black','black'];
+  const centerX=200, centerY=200, spacing=20;
+  colors.forEach((color,i)=>{
+    let angle = (i/ colors.length)*2*Math.PI;
+    let x = centerX + Math.cos(angle)*spacing;
+    let y = centerY + Math.sin(angle)*spacing;
+    pucks.push({x:x, y:y, r:10, color:color, vx:0, vy:0});
+  });
 }
 
 function restartGame(){
@@ -96,10 +102,9 @@ function shoot(){
   const dx=dragEnd.x-dragStart.x, dy=dragEnd.y-dragStart.y;
   const len=Math.hypot(dx,dy);
   if(len>5){
-    let speed=6;
-    striker.vx=-(dx/len)*speed;
-    striker.vy=-(dy/len)*speed;
-    waitingForNextTurn=true; // start waiting
+    striker.vx=-(dx/len)*6;
+    striker.vy=-(dy/len)*6;
+    waitingForNextTurn=true;
   }
 }
 
@@ -136,7 +141,7 @@ function physics(){
     for(let j=i+1;j<pucks.length;j++)
       collide(pucks[i],pucks[j]);
 
-  // Check pockets
+  // pockets
   pucks=pucks.filter(p=>{
     if([0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<20))){
       if(p.color=='white') scores.white++;
@@ -147,19 +152,30 @@ function physics(){
     return true;
   });
 
-  // only switch turn when everything stopped and waitingForNextTurn is true
   if(waitingForNextTurn && striker.vx==0 && striker.vy==0 && pucks.every(p=>p.vx==0 && p.vy==0)){
     waitingForNextTurn=false;
-    switchTurn();
+    switchTurnSmart();
   }
 
   if(pucks.length==0) document.getElementById('winMessage').style.display='block';
 }
 
-function switchTurn(){
+function switchTurnSmart(){
   turn = (turn=='white') ? 'black' : 'white';
-  striker.y = (turn=='white') ? 360 : 40;
-  striker.x = 200; striker.vx=0; striker.vy=0;
+  let targetY = (turn=='white') ? 360 : 40;
+  let safeX=200;
+
+  // Find safe X
+  for(let dx=-100; dx<=100; dx+=10){
+    let testX=200+dx;
+    let safe=true;
+    for(let p of pucks){
+      if(Math.hypot(p.x - testX, p.y - targetY)<p.r+striker.r+2){ safe=false; break;}
+    }
+    if(safe){ safeX=testX; break;}
+  }
+  striker.x=safeX; striker.y=targetY;
+  striker.vx=0; striker.vy=0;
 }
 
 function drawBoard(){
@@ -168,13 +184,11 @@ function drawBoard(){
   [0,400].forEach(x=>[0,400].forEach(y=>{
     ctx.beginPath(); ctx.arc(x,y,20,0,2*Math.PI); ctx.fill();
   }));
-
   ctx.strokeStyle='brown'; ctx.lineWidth=2;
   ctx.beginPath(); ctx.arc(200,200,50,0,2*Math.PI); ctx.stroke();
   ctx.beginPath(); ctx.arc(200,200,30,0,2*Math.PI); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(50,50); ctx.lineTo(350,350);
   ctx.moveTo(350,50); ctx.lineTo(50,350); ctx.stroke();
-
   ctx.strokeRect(40,40,320,320);
 }
 
