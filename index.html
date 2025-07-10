@@ -24,7 +24,7 @@
 <div id="scoreboard" style="display:none;">
   ⚪ White: <span id="whiteScore">0</span> &nbsp;&nbsp; ⚫ Black: <span id="blackScore">0</span>
 </div>
-<input type="range" id="slider" min="100" max="300" value="200">
+<input type="range" id="slider" min="80" max="320" value="200">
 <canvas id="gameCanvas" width="400" height="400" style="display:none;"></canvas>
 <div id="winMessage">🎉 You Win! <button onclick="restartGame()">Play Again</button></div>
 <div id="aboutBox">Created by Theshmil & Sofa ❤️<br><br><button onclick="closeAbout()">Close</button></div>
@@ -33,7 +33,7 @@
 const canvas=document.getElementById('gameCanvas');
 const ctx=canvas.getContext('2d');
 const slider=document.getElementById('slider');
-let striker={x:200,y:360,r:12,vx:0,vy:0};
+let striker={x:200,y:360,r:16,vx:0,vy:0}; // bigger striker (was 12)
 let pucks=[];
 let dragging=false, dragStart=null, dragEnd=null;
 let mode='', turn='white'; 
@@ -43,12 +43,12 @@ let waitingForNextTurn=false;
 function initPucks(){
   pucks=[];
   const colors = ['red','white','white','white','white','black','black','black','black'];
-  const centerX=200, centerY=200, spacing=20;
+  const centerX=200, centerY=200, spacing=22;
   colors.forEach((color,i)=>{
     let angle = (i/ colors.length)*2*Math.PI;
     let x = centerX + Math.cos(angle)*spacing;
     let y = centerY + Math.sin(angle)*spacing;
-    pucks.push({x:x, y:y, r:10, color:color, vx:0, vy:0});
+    pucks.push({x:x, y:y, r:12, color:color, vx:0, vy:0}); // bigger pucks (was 10)
   });
 }
 
@@ -106,7 +106,6 @@ canvas.addEventListener('touchend',e=>{if(dragging){shoot();} dragging=false;});
 slider.addEventListener('input',()=>{
   if(striker.vx==0 && striker.vy==0 && !waitingForNextTurn){
     let newX=parseInt(slider.value);
-    // check if safe
     let safe=true;
     for(let p of pucks){
       if(Math.hypot(p.x - newX, p.y - striker.y)<p.r+striker.r+2){ safe=false; break;}
@@ -119,8 +118,8 @@ function shoot(){
   const dx=dragEnd.x-dragStart.x, dy=dragEnd.y-dragStart.y;
   const len=Math.hypot(dx,dy);
   if(len>5){
-    striker.vx=-(dx/len)*6;
-    striker.vy=-(dy/len)*6;
+    striker.vx=-(dx/len)*8; // faster speed (was 6)
+    striker.vy=-(dy/len)*8;
     waitingForNextTurn=true;
   }
 }
@@ -133,7 +132,6 @@ function collide(a,b){
     let p=2*((a.vx*nx+a.vy*ny)-(b.vx*nx+b.vy*ny))/(1+1);
     a.vx -= p*nx; a.vy -= p*ny;
     b.vx += p*nx; b.vy += p*ny;
-
     let overlap=(a.r+b.r-dist)/2;
     a.x -= nx*overlap; a.y -= ny*overlap;
     b.x += nx*overlap; b.y += ny*overlap;
@@ -158,7 +156,6 @@ function physics(){
     for(let j=i+1;j<pucks.length;j++)
       collide(pucks[i],pucks[j]);
 
-  // pockets
   pucks=pucks.filter(p=>{
     if([0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<20))){
       if(p.color=='white') scores.white++;
@@ -180,10 +177,8 @@ function physics(){
 function switchTurnSmart(){
   turn = (turn=='white') ? 'black' : 'white';
   let targetY = (turn=='white') ? 360 : 40;
-  let centerX=200;
-  let safeX=centerX;
+  let centerX=200, safeX=centerX;
 
-  // find center first, then nearest safe
   for(let dx=0; dx<=100; dx+=10){
     for(let testX of [centerX+dx, centerX-dx]){
       let safe=true;
