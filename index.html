@@ -10,8 +10,8 @@
   #menu { margin-top:30px; }
   #menu button { margin:10px; padding:15px 30px; font-size:20px; background:#fff; color:#000; border:none; border-radius:10px; cursor:pointer; }
   #scoreboard { margin-top:10px; font-size:18px; }
-  #sliderContainer { width:100%; position:absolute; left:0; }
-  #slider { width:150px; appearance:none; height:8px; border-radius:4px; background:#333; outline:none; }
+  #sliderContainer { position:absolute; left:50%; transform:translateX(-50%); width:160px; }
+  #slider { width:100%; appearance:none; height:8px; border-radius:4px; background:#333; outline:none; }
   #slider::-webkit-slider-thumb { width:20px; height:20px; background:#00ffcc; border-radius:50%; cursor:pointer; }
   #winMessage, #aboutBox { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.8); padding:20px; border-radius:10px; font-size:20px; display:none; }
 </style>
@@ -26,7 +26,7 @@
 <div id="scoreboard" style="display:none;">
   ⚪ White: <span id="whiteScore">0</span> &nbsp;&nbsp; ⚫ Black: <span id="blackScore">0</span>
 </div>
-<div id="sliderContainer" style="top:430px; display:none;">
+<div id="sliderContainer" style="top:440px; display:none;">
   <input type="range" id="slider" min="80" max="320" value="200">
 </div>
 <canvas id="gameCanvas" width="400" height="400" style="display:none;"></canvas>
@@ -87,15 +87,19 @@ function showAbout(){ document.getElementById('aboutBox').style.display='block';
 function closeAbout(){ document.getElementById('aboutBox').style.display='none'; }
 
 function updateSliderPosition(){
-  // move slider to bottom or top depending on turn
-  sliderContainer.style.top = (turn=='white') ? '430px' : '-30px';
+  sliderContainer.style.top = (turn=='white') ? '440px' : '-40px'; // below or above canvas
 }
 
-function getPos(e){
-  const rect=canvas.getBoundingClientRect();
-  if(e.touches) e=e.touches[0];
-  return {x:e.clientX-rect.left,y:e.clientY-rect.top};
-}
+slider.addEventListener('input',()=>{
+  if(striker.vx==0 && striker.vy==0 && !waitingForNextTurn){
+    let newX=parseInt(slider.value);
+    let safe=true;
+    for(let p of pucks){
+      if(Math.hypot(p.x - newX, p.y - striker.y)<p.r+striker.r+2){ safe=false; break;}
+    }
+    if(safe) striker.x=newX;
+  }
+});
 
 canvas.addEventListener('mousedown',e=>{
   let pos=getPos(e);
@@ -114,16 +118,11 @@ canvas.addEventListener('touchstart',e=>{
 canvas.addEventListener('touchmove',e=>{if(dragging){dragEnd=getPos(e); e.preventDefault();}});
 canvas.addEventListener('touchend',e=>{if(dragging){shoot();} dragging=false;});
 
-slider.addEventListener('input',()=>{
-  if(striker.vx==0 && striker.vy==0 && !waitingForNextTurn){
-    let newX=parseInt(slider.value);
-    let safe=true;
-    for(let p of pucks){
-      if(Math.hypot(p.x - newX, p.y - striker.y)<p.r+striker.r+2){ safe=false; break;}
-    }
-    if(safe) striker.x=newX;
-  }
-});
+function getPos(e){
+  const rect=canvas.getBoundingClientRect();
+  if(e.touches) e=e.touches[0];
+  return {x:e.clientX-rect.left,y:e.clientY-rect.top};
+}
 
 function shoot(){
   const dx=dragEnd.x-dragStart.x, dy=dragEnd.y-dragStart.y;
@@ -188,20 +187,8 @@ function switchTurnSmart(){
   turn = (turn=='white') ? 'black' : 'white';
   updateSliderPosition();
   let targetY=(turn=='white')?360:40;
-  let centerX=200, safeX=centerX;
-  for(let dx=0; dx<=100; dx+=10){
-    for(let testX of [centerX+dx, centerX-dx]){
-      let safe=true;
-      for(let p of pucks){
-        if(Math.hypot(p.x - testX, p.y - targetY)<p.r+striker.r+2){ safe=false; break;}
-      }
-      if(safe){ safeX=testX; break;}
-    }
-    if(safeX!=centerX) break;
-  }
-  striker.x=safeX; striker.y=targetY;
-  striker.vx=0; striker.vy=0;
-  slider.value=safeX;
+  striker.x=200; striker.y=targetY; striker.vx=0; striker.vy=0;
+  slider.value=200;
 }
 
 function drawBoard(){
@@ -213,8 +200,6 @@ function drawBoard(){
   ctx.strokeStyle='brown'; ctx.lineWidth=2;
   ctx.beginPath(); ctx.arc(200,200,50,0,2*Math.PI); ctx.stroke();
   ctx.beginPath(); ctx.arc(200,200,30,0,2*Math.PI); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(50,50); ctx.lineTo(350,350);
-  ctx.moveTo(350,50); ctx.lineTo(50,350); ctx.stroke();
   ctx.strokeRect(40,40,320,320);
 }
 
