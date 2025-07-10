@@ -36,7 +36,7 @@ let pucks=[];
 let dragging=false, dragStart=null, dragEnd=null;
 let mode='';
 let currentPlayer='white', whiteScore=0, blackScore=0;
-let queenCovered=false, redPotted=false;
+let redPotted=false;
 let shotInProgress=false;
 
 function initPucks(){
@@ -55,7 +55,7 @@ function initPucks(){
 function restartGame(){
   striker.x=200; striker.y=360; striker.vx=0; striker.vy=0;
   currentPlayer='white'; whiteScore=0; blackScore=0;
-  queenCovered=false; redPotted=false;
+  redPotted=false;
   shotInProgress=false;
   initPucks();
   document.getElementById('winMessage').style.display='none';
@@ -97,15 +97,10 @@ canvas.addEventListener('touchstart',e=>{
 canvas.addEventListener('touchmove',e=>{if(dragging){dragEnd=getPos(e); e.preventDefault();}});
 canvas.addEventListener('touchend',()=>{if(dragging){shoot();} dragging=false;});
 
-// ✅ Fix: avoid striker overlapping pucks when sliding
 slider.addEventListener('input',()=>{
   let newX=+slider.value;
   let overlap=pucks.some(p=>Math.hypot(newX - p.x, striker.y - p.y) < striker.r + p.r);
-  if(!overlap){
-    striker.x=newX;
-  } else {
-    slider.value=striker.x; // revert slider to current striker x
-  }
+  if(!overlap){ striker.x=newX; } else { slider.value=striker.x; }
 });
 
 function shoot(){
@@ -152,11 +147,11 @@ function physics(){
   }
 
   pucks=pucks.filter(p=>{
-    let pocketed=[0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<25));
+    let pocketed=[0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<28)); // ✅ bigger pockets
     if(pocketed){
       if(p.color=='red'){ redPotted=true; }
-      else if(currentPlayer=='white' && p.color=='white'){ whiteScore++; queenCovered=redPotted?true:queenCovered; }
-      else if(currentPlayer=='black' && p.color=='black'){ blackScore++; queenCovered=redPotted?true:queenCovered; }
+      else if(currentPlayer=='white' && p.color=='white'){ whiteScore++; }
+      else if(currentPlayer=='black' && p.color=='black'){ blackScore++; }
     }
     return !pocketed;
   });
@@ -166,13 +161,16 @@ function physics(){
 
   if(shotInProgress && [striker,...pucks].every(o=>o.vx==0&&o.vy==0)){
     shotInProgress=false;
-    if(redPotted && !queenCovered){
-      pucks.push({x:200,y:200,r:12,color:'red',vx:0,vy:0});
-      redPotted=false;
-    }
     currentPlayer=currentPlayer=='white'?'black':'white';
     striker.y=currentPlayer=='white'?360:40;
-    striker.x=200; slider.value=200;
+
+    // ✅ fix: avoid spawning on puck
+    let safeX=200;
+    if(pucks.some(p=>Math.hypot(safeX-p.x,striker.y-p.y)<striker.r+p.r)){
+      safeX=220;
+      if(pucks.some(p=>Math.hypot(safeX-p.x,striker.y-p.y)<striker.r+p.r)) safeX=180;
+    }
+    striker.x=safeX; slider.value=safeX;
   }
 
   if(pucks.length==0) document.getElementById('winMessage').style.display='block';
@@ -182,24 +180,19 @@ function drawBoard(){
   ctx.fillStyle='#deb887'; ctx.fillRect(0,0,400,400);
   ctx.strokeStyle='#8b4513'; ctx.lineWidth=4;
   ctx.strokeRect(20,20,360,360);
-  ctx.strokeStyle='#654321'; ctx.lineWidth=2;
-  ctx.beginPath(); ctx.arc(200,200,50,0,2*Math.PI); ctx.stroke();
 }
 
 function draw(){
   ctx.clearRect(0,0,400,400);
   drawBoard();
   [0,400].forEach(x=>[0,400].forEach(y=>{
-    ctx.beginPath(); ctx.arc(x,y,25,0,2*Math.PI); ctx.fillStyle='black'; ctx.fill();
+    ctx.beginPath(); ctx.arc(x,y,28,0,2*Math.PI); ctx.fillStyle='black'; ctx.fill(); // bigger pockets
   }));
   pucks.forEach(p=>{
     ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,2*Math.PI);
-    ctx.fillStyle=p.color;
-    ctx.shadowColor='rgba(0,0,0,0.4)'; ctx.shadowBlur=4;
-    ctx.fill(); ctx.shadowBlur=0;
+    ctx.fillStyle=p.color; ctx.fill();
   });
-  ctx.beginPath(); ctx.arc(striker.x,striker.y,striker.r,0,2*Math.PI);
-  ctx.fillStyle='navy'; ctx.fill();
+  ctx.beginPath(); ctx.arc(striker.x,striker.y,striker.r,0,2*Math.PI); ctx.fillStyle='navy'; ctx.fill();
 
   if(dragging){
     ctx.strokeStyle='yellow';
