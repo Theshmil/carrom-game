@@ -7,8 +7,9 @@
 <style>
   body { margin:0; background:#111; color:#fff; font-family:sans-serif; text-align:center; }
   canvas { background:#d2b48c; border:8px solid #fff; border-radius:20px; touch-action:none; }
-  #menu { margin-top:50px; }
+  #menu { margin-top:30px; }
   #menu button { margin:10px; padding:15px 30px; font-size:20px; background:#fff; color:#000; border:none; border-radius:10px; cursor:pointer; }
+  #scoreboard { margin-top:10px; font-size:18px; }
   #winMessage, #aboutBox { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.8); padding:20px; border-radius:10px; font-size:20px; display:none; }
 </style>
 </head>
@@ -19,6 +20,9 @@
   <button onclick="startGame('ai')">Play vs AI 🤖</button>
   <button onclick="showAbout()">About</button>
 </div>
+<div id="scoreboard" style="display:none;">
+  ⚪ White: <span id="whiteScore">0</span> &nbsp;&nbsp; ⚫ Black: <span id="blackScore">0</span>
+</div>
 <canvas id="gameCanvas" width="400" height="400" style="display:none;"></canvas>
 <div id="winMessage">🎉 You Win! <button onclick="restartGame()">Play Again</button></div>
 <div id="aboutBox">Created by Theshmil & Sofa ❤️<br><br><button onclick="closeAbout()">Close</button></div>
@@ -26,10 +30,11 @@
 <script>
 const canvas=document.getElementById('gameCanvas');
 const ctx=canvas.getContext('2d');
-let striker={x:200,y:360,r:12,vx:0,vy:0};  
+let striker={x:200,y:360,r:12,vx:0,vy:0};
 let pucks=[];
 let dragging=false, dragStart=null, dragEnd=null;
-let mode='';
+let mode='', turn='white'; 
+let scores={white:0, black:0};
 
 function initPucks(){
   pucks=[];
@@ -40,12 +45,21 @@ function initPucks(){
 function restartGame(){
   striker.x=200; striker.y=360; striker.vx=0; striker.vy=0;
   initPucks();
+  scores.white=0; scores.black=0;
+  updateScores();
+  turn='white';
   document.getElementById('winMessage').style.display='none';
+}
+
+function updateScores(){
+  document.getElementById('whiteScore').innerText=scores.white;
+  document.getElementById('blackScore').innerText=scores.black;
 }
 
 function startGame(selected){
   mode=selected;
   document.getElementById('menu').style.display='none';
+  document.getElementById('scoreboard').style.display='block';
   canvas.style.display='block';
   restartGame();
 }
@@ -80,8 +94,9 @@ function shoot(){
   const dx=dragEnd.x-dragStart.x, dy=dragEnd.y-dragStart.y;
   const len=Math.hypot(dx,dy);
   if(len>5){
-    striker.vx=-(dx/len)*6;
-    striker.vy=-(dy/len)*6;
+    let speed=6; // fixed realistic speed
+    striker.vx=-(dx/len)*speed;
+    striker.vy=-(dy/len)*speed;
   }
 }
 
@@ -118,34 +133,45 @@ function physics(){
     for(let j=i+1;j<pucks.length;j++)
       collide(pucks[i],pucks[j]);
 
+  // Check pockets
   pucks=pucks.filter(p=>{
-    if([0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<20))) return false;
+    if([0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<20))){
+      if(p.color=='white') scores.white++;
+      else if(p.color=='black') scores.black++;
+      updateScores();
+      return false;
+    }
     return true;
   });
+
+  // Check if striker and pucks stopped moving → switch turn
+  if(striker.vx==0 && striker.vy==0 && pucks.every(p=>p.vx==0 && p.vy==0)){
+    switchTurn();
+  }
 
   if(pucks.length==0) document.getElementById('winMessage').style.display='block';
 }
 
+function switchTurn(){
+  turn = (turn=='white') ? 'black' : 'white';
+  striker.y = (turn=='white') ? 360 : 40;
+  striker.x = 200; striker.vx=0; striker.vy=0;
+}
+
 function drawBoard(){
   ctx.fillStyle='#d2b48c'; ctx.fillRect(0,0,400,400);
-
-  // corner pockets
   ctx.fillStyle='black';
   [0,400].forEach(x=>[0,400].forEach(y=>{
     ctx.beginPath(); ctx.arc(x,y,20,0,2*Math.PI); ctx.fill();
   }));
 
-  // center circles
   ctx.strokeStyle='brown'; ctx.lineWidth=2;
   ctx.beginPath(); ctx.arc(200,200,50,0,2*Math.PI); ctx.stroke();
   ctx.beginPath(); ctx.arc(200,200,30,0,2*Math.PI); ctx.stroke();
-
-  // diagonal arrows
   ctx.beginPath(); ctx.moveTo(50,50); ctx.lineTo(350,350);
   ctx.moveTo(350,50); ctx.lineTo(50,350); ctx.stroke();
 
-  // decorative border lines
-  ctx.strokeRect(40,40,320,320);
+  ctx.strokeRect(40,40,320,320); // decorative border
 }
 
 function draw(){
