@@ -107,8 +107,8 @@ function shoot(){
   const dx=dragEnd.x-dragStart.x, dy=dragEnd.y-dragStart.y;
   const len=Math.hypot(dx,dy);
   if(len>5){
-    striker.vx=-(dx/len)*6;
-    striker.vy=-(dy/len)*6;
+    striker.vx=-(dx/len)*9;  // ✅ increased speed
+    striker.vy=-(dy/len)*9;  // ✅ increased speed
     shotInProgress=true;
   }
 }
@@ -147,7 +147,7 @@ function physics(){
   }
 
   pucks=pucks.filter(p=>{
-    let pocketed=[0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<28)); // ✅ bigger pockets
+    let pocketed=[0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<28));
     if(pocketed){
       if(p.color=='red'){ redPotted=true; }
       else if(currentPlayer=='white' && p.color=='white'){ whiteScore++; }
@@ -164,7 +164,7 @@ function physics(){
     currentPlayer=currentPlayer=='white'?'black':'white';
     striker.y=currentPlayer=='white'?360:40;
 
-    // ✅ fix: avoid spawning on puck
+    // avoid spawning on puck
     let safeX=200;
     if(pucks.some(p=>Math.hypot(safeX-p.x,striker.y-p.y)<striker.r+p.r)){
       safeX=220;
@@ -186,7 +186,7 @@ function draw(){
   ctx.clearRect(0,0,400,400);
   drawBoard();
   [0,400].forEach(x=>[0,400].forEach(y=>{
-    ctx.beginPath(); ctx.arc(x,y,28,0,2*Math.PI); ctx.fillStyle='black'; ctx.fill(); // bigger pockets
+    ctx.beginPath(); ctx.arc(x,y,28,0,2*Math.PI); ctx.fillStyle='black'; ctx.fill();
   }));
   pucks.forEach(p=>{
     ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,2*Math.PI);
