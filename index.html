@@ -6,14 +6,23 @@
 <title>Carrom Pool</title>
 <style>
   body { margin:0; background:#111; color:#fff; font-family:sans-serif; text-align:center; }
-  canvas { background:#d2b48c; border:8px solid #fff; border-radius:20px; touch-action:none; display:block; margin:0 auto; }
+  canvas { background:#d2b48c; border:10px solid #fff; border-radius:20px; touch-action:none; display:block; margin:0 auto; }
   #menu { margin-top:20px; }
   #menu button { margin:8px; padding:12px 25px; font-size:18px; background:#fff; color:#000; border:none; border-radius:8px; cursor:pointer; }
   #scoreboard { margin-top:8px; font-size:16px; }
-  #sliderContainer { margin:10px auto; width:180px; }
-  #slider { width:100%; appearance:none; height:8px; border-radius:4px; background:#333; outline:none; }
-  #slider::-webkit-slider-thumb { width:18px; height:18px; background:#00ffcc; border-radius:50%; cursor:pointer; }
-  #winMessage, #aboutBox { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.8); padding:20px; border-radius:10px; font-size:18px; display:none; }
+  #sliderContainer { margin:8px auto; width:60%; }
+  #slider {
+    width:100%; height:10px; border-radius:5px; background:#333;
+    outline:none; appearance:none;
+  }
+  #slider::-webkit-slider-thumb {
+    width:20px; height:20px; background:#00ffcc;
+    border-radius:50%; cursor:pointer; border:2px solid #fff;
+  }
+  #winMessage, #aboutBox {
+    position:absolute; top:40%; left:50%; transform:translate(-50%,-50%);
+    background:rgba(0,0,0,0.8); padding:20px; border-radius:10px; font-size:18px; display:none;
+  }
 </style>
 </head>
 <body>
@@ -36,7 +45,6 @@
 const canvas=document.getElementById('gameCanvas');
 const ctx=canvas.getContext('2d');
 const slider=document.getElementById('slider');
-const sliderContainer=document.getElementById('sliderContainer');
 let striker={x:200,y:360,r:16,vx:0,vy:0};
 let pucks=[];
 let dragging=false, dragStart=null, dragEnd=null;
@@ -49,14 +57,14 @@ function initPucks(){
   pucks=[];
   const center=200;
   const layers=[
-    ['red'],                      // center queen
-    ['white','black','white','black','white','black'], // first circle
-    ['white','black','white','black','white','black','white','black','white','black'] // second circle
+    ['red'],
+    ['white','black','white','black','white','black'],
+    ['white','black','white','black','white','black','white','black','white','black']
   ];
   let radiusStep=18;
   let currentRadius=0;
   layers.forEach((layer,layerIdx)=>{
-    if(layerIdx===0){ // center queen
+    if(layerIdx===0){
       pucks.push({x:center,y:center,r:12,color:'red',vx:0,vy:0});
     } else {
       currentRadius+=radiusStep;
@@ -94,7 +102,7 @@ function startGame(){
   document.getElementById('menu').style.display='none';
   document.getElementById('scoreboard').style.display='block';
   canvas.style.display='block';
-  sliderContainer.style.display='block';
+  document.getElementById('sliderContainer').style.display='block';
   restartGame();
 }
 
@@ -211,6 +219,7 @@ function drawBoard(){
   ctx.moveTo(360,40); ctx.lineTo(40,360); ctx.stroke();
   ctx.beginPath(); ctx.arc(200,200,50,0,2*Math.PI); ctx.stroke();
   ctx.beginPath(); ctx.arc(200,200,30,0,2*Math.PI); ctx.stroke();
+
   ctx.fillStyle='black';
   [0,400].forEach(x=>[0,400].forEach(y=>{
     ctx.beginPath(); ctx.arc(x,y,30,0,2*Math.PI); ctx.fill();
