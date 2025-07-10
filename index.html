@@ -10,20 +10,20 @@
   #menu { margin-top:20px; }
   #menu button { margin:10px; padding:10px 20px; font-size:18px; background:#fff; color:#000; border:none; border-radius:8px; cursor:pointer; }
   #winMessage, #aboutBox { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.8); padding:20px; border-radius:10px; font-size:20px; display:none; }
-  #slider { width:200px; margin-top:10px; }
+  #slider { width:200px; margin-top:10px; display:none; }
 </style>
 </head>
 <body>
 <h1>Carrom Pool</h1>
 <div id="menu">
-  <button onclick="startGame('local')">Local Multiplayer</button>
+  <button onclick="startGame()">Local Multiplayer</button>
   <button onclick="showAbout()">About</button>
 </div>
 <div>
   ⚪ White: <span id="whiteScore">0</span> &nbsp; ⚫ Black: <span id="blackScore">0</span>
 </div>
 <canvas id="gameCanvas" width="400" height="400" style="display:none;"></canvas>
-<input type="range" id="slider" min="60" max="340" value="200" style="display:none;">
+<input type="range" id="slider" min="60" max="340" value="200">
 <div id="winMessage">🎉 You Win! <button onclick="restartGame()">Play Again</button></div>
 <div id="aboutBox">Created by Theshmil & Sofa ❤️<br><br><button onclick="closeAbout()">Close</button></div>
 
@@ -34,9 +34,7 @@ const slider=document.getElementById('slider');
 let striker={x:200,y:360,r:14,vx:0,vy:0};
 let pucks=[];
 let dragging=false, dragStart=null, dragEnd=null;
-let mode='';
 let currentPlayer='white', whiteScore=0, blackScore=0;
-let redPotted=false;
 let shotInProgress=false;
 
 function initPucks(){
@@ -48,23 +46,20 @@ function initPucks(){
   }
   for(let i=0;i<6;i++){
     let angle=i*Math.PI/3+Math.PI/6;
-    pucks.push({x:200+44*Math.cos(angle), y:200+44*Math.sin(angle), r:12, color=i%2==0?'black':'white',vx:0,vy:0});
+    pucks.push({x:200+44*Math.cos(angle), y:200+44*Math.sin(angle), r:12, color:i%2==0?'black':'white',vx:0,vy:0});
   }
 }
 
 function restartGame(){
   striker.x=200; striker.y=360; striker.vx=0; striker.vy=0;
-  currentPlayer='white'; whiteScore=0; blackScore=0;
-  redPotted=false;
-  shotInProgress=false;
+  currentPlayer='white'; whiteScore=0; blackScore=0; shotInProgress=false;
   initPucks();
   document.getElementById('winMessage').style.display='none';
   document.getElementById('whiteScore').innerText=whiteScore;
   document.getElementById('blackScore').innerText=blackScore;
 }
 
-function startGame(selected){
-  mode=selected;
+function startGame(){
   document.getElementById('menu').style.display='none';
   canvas.style.display='block';
   slider.style.display='block';
@@ -149,8 +144,7 @@ function physics(){
   pucks=pucks.filter(p=>{
     let pocketed=[0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<28));
     if(pocketed){
-      if(p.color=='red'){ redPotted=true; }
-      else if(currentPlayer=='white' && p.color=='white'){ whiteScore++; }
+      if(currentPlayer=='white' && p.color=='white'){ whiteScore++; }
       else if(currentPlayer=='black' && p.color=='black'){ blackScore++; }
     }
     return !pocketed;
@@ -176,30 +170,19 @@ function physics(){
 
 function drawBoard(){
   ctx.fillStyle='#deb887'; ctx.fillRect(0,0,400,400);
-
   ctx.strokeStyle='#8b4513'; ctx.lineWidth=4;
   ctx.strokeRect(20,20,360,360);
-
-  // baselines
+  ctx.beginPath(); ctx.arc(200,200,40,0,2*Math.PI); ctx.stroke();
+  ctx.beginPath(); ctx.arc(200,200,15,0,2*Math.PI); ctx.stroke();
+  ctx.lineWidth=2;
   ctx.beginPath();
   ctx.moveTo(60,200); ctx.lineTo(340,200);
   ctx.moveTo(200,60); ctx.lineTo(200,340);
-  ctx.stroke();
-
-  // center circles
-  ctx.beginPath(); ctx.arc(200,200,40,0,2*Math.PI); ctx.stroke();
-  ctx.beginPath(); ctx.arc(200,200,15,0,2*Math.PI); ctx.stroke();
-
-  // diagonal arrows
-  ctx.lineWidth=2;
-  ctx.beginPath();
   ctx.moveTo(60,60); ctx.lineTo(85,85);
   ctx.moveTo(340,60); ctx.lineTo(315,85);
   ctx.moveTo(60,340); ctx.lineTo(85,315);
   ctx.moveTo(340,340); ctx.lineTo(315,315);
   ctx.stroke();
-
-  // pocket circles
   [0,400].forEach(x=>[0,400].forEach(y=>{
     ctx.beginPath(); ctx.arc(x,y,28,0,2*Math.PI); ctx.fillStyle='#000'; ctx.fill();
   }));
@@ -227,7 +210,7 @@ function draw(){
 }
 
 function loop(){
-  if(mode){ physics(); draw(); }
+  physics(); draw();
   requestAnimationFrame(loop);
 }
 loop();
