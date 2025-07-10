@@ -10,7 +10,9 @@
   #menu { margin-top:30px; }
   #menu button { margin:10px; padding:15px 30px; font-size:20px; background:#fff; color:#000; border:none; border-radius:10px; cursor:pointer; }
   #scoreboard { margin-top:10px; font-size:18px; }
-  #slider { margin-top:10px; display:none; }
+  #sliderContainer { width:100%; position:absolute; left:0; }
+  #slider { width:150px; appearance:none; height:8px; border-radius:4px; background:#333; outline:none; }
+  #slider::-webkit-slider-thumb { width:20px; height:20px; background:#00ffcc; border-radius:50%; cursor:pointer; }
   #winMessage, #aboutBox { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.8); padding:20px; border-radius:10px; font-size:20px; display:none; }
 </style>
 </head>
@@ -24,7 +26,9 @@
 <div id="scoreboard" style="display:none;">
   ⚪ White: <span id="whiteScore">0</span> &nbsp;&nbsp; ⚫ Black: <span id="blackScore">0</span>
 </div>
-<input type="range" id="slider" min="80" max="320" value="200">
+<div id="sliderContainer" style="top:430px; display:none;">
+  <input type="range" id="slider" min="80" max="320" value="200">
+</div>
 <canvas id="gameCanvas" width="400" height="400" style="display:none;"></canvas>
 <div id="winMessage">🎉 You Win! <button onclick="restartGame()">Play Again</button></div>
 <div id="aboutBox">Created by Theshmil & Sofa ❤️<br><br><button onclick="closeAbout()">Close</button></div>
@@ -33,6 +37,7 @@
 const canvas=document.getElementById('gameCanvas');
 const ctx=canvas.getContext('2d');
 const slider=document.getElementById('slider');
+const sliderContainer=document.getElementById('sliderContainer');
 let striker={x:200,y:360,r:16,vx:0,vy:0};
 let pucks=[];
 let dragging=false, dragStart=null, dragEnd=null;
@@ -60,6 +65,7 @@ function restartGame(){
   turn='white';
   waitingForNextTurn=false;
   slider.value=200;
+  updateSliderPosition();
   document.getElementById('winMessage').style.display='none';
 }
 
@@ -73,12 +79,17 @@ function startGame(selected){
   document.getElementById('menu').style.display='none';
   document.getElementById('scoreboard').style.display='block';
   canvas.style.display='block';
-  slider.style.display='block';
+  sliderContainer.style.display='block';
   restartGame();
 }
 
 function showAbout(){ document.getElementById('aboutBox').style.display='block'; }
 function closeAbout(){ document.getElementById('aboutBox').style.display='none'; }
+
+function updateSliderPosition(){
+  // move slider to bottom or top depending on turn
+  sliderContainer.style.top = (turn=='white') ? '430px' : '-30px';
+}
 
 function getPos(e){
   const rect=canvas.getBoundingClientRect();
@@ -156,7 +167,7 @@ function physics(){
       collide(pucks[i],pucks[j]);
 
   pucks=pucks.filter(p=>{
-    if([0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<35))) { // even bigger pocket radius!
+    if([0,400].some(px=>[0,400].some(py=>Math.hypot(p.x-px,p.y-py)<35))){
       if(p.color=='white') scores.white++;
       else if(p.color=='black') scores.black++;
       updateScores();
@@ -175,6 +186,7 @@ function physics(){
 
 function switchTurnSmart(){
   turn = (turn=='white') ? 'black' : 'white';
+  updateSliderPosition();
   let targetY=(turn=='white')?360:40;
   let centerX=200, safeX=centerX;
   for(let dx=0; dx<=100; dx+=10){
@@ -196,7 +208,7 @@ function drawBoard(){
   ctx.fillStyle='#d2b48c'; ctx.fillRect(0,0,400,400);
   ctx.fillStyle='black';
   [0,400].forEach(x=>[0,400].forEach(y=>{
-    ctx.beginPath(); ctx.arc(x,y,35,0,2*Math.PI); ctx.fill(); // much bigger pocket
+    ctx.beginPath(); ctx.arc(x,y,35,0,2*Math.PI); ctx.fill();
   }));
   ctx.strokeStyle='brown'; ctx.lineWidth=2;
   ctx.beginPath(); ctx.arc(200,200,50,0,2*Math.PI); ctx.stroke();
@@ -215,13 +227,13 @@ function draw(){
   ctx.beginPath(); ctx.arc(striker.x,striker.y,striker.r,0,2*Math.PI); ctx.fillStyle='navy'; ctx.fill();
 
   if(dragging){
-    ctx.strokeStyle='lime'; ctx.lineWidth=4; // bold bright drag line
+    ctx.strokeStyle='lime'; ctx.lineWidth=4;
     ctx.beginPath(); ctx.moveTo(striker.x,striker.y); ctx.lineTo(dragEnd.x,dragEnd.y); ctx.stroke();
     let dx=dragEnd.x-striker.x, dy=dragEnd.y-striker.y, len=Math.hypot(dx,dy);
     if(len>0){
       let ex=striker.x - dx/len*100, ey=striker.y - dy/len*100;
       ctx.setLineDash([4,4]);
-      ctx.strokeStyle='cyan'; ctx.lineWidth=3; // bold guide
+      ctx.strokeStyle='cyan'; ctx.lineWidth=3;
       ctx.beginPath(); ctx.moveTo(striker.x,striker.y); ctx.lineTo(ex,ey); ctx.stroke();
       ctx.setLineDash([]);
     }
