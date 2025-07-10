@@ -6,11 +6,11 @@
 <title>Carrom Pool</title>
 <style>
   body { margin:0; background:#111; color:#fff; font-family:sans-serif; text-align:center; }
-  canvas { background:#d2b48c; border:8px solid #fff; border-radius:20px; touch-action:none; }
+  canvas { background:#d2b48c; border:8px solid #fff; border-radius:20px; touch-action:none; display:block; margin:0 auto; }
   #menu { margin-top:20px; }
   #menu button { margin:8px; padding:12px 25px; font-size:18px; background:#fff; color:#000; border:none; border-radius:8px; cursor:pointer; }
   #scoreboard { margin-top:8px; font-size:16px; }
-  #sliderContainer { position:absolute; left:50%; transform:translateX(-50%); width:180px; }
+  #sliderContainer { margin:10px auto; width:180px; }
   #slider { width:100%; appearance:none; height:8px; border-radius:4px; background:#333; outline:none; }
   #slider::-webkit-slider-thumb { width:18px; height:18px; background:#00ffcc; border-radius:50%; cursor:pointer; }
   #winMessage, #aboutBox { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.8); padding:20px; border-radius:10px; font-size:18px; display:none; }
@@ -25,10 +25,10 @@
 <div id="scoreboard" style="display:none;">
   ⚪ White: <span id="whiteScore">0</span> &nbsp;&nbsp; ⚫ Black: <span id="blackScore">0</span>
 </div>
-<div id="sliderContainer" style="top:440px; display:none;">
+<canvas id="gameCanvas" width="400" height="400" style="display:none;"></canvas>
+<div id="sliderContainer" style="display:none;">
   <input type="range" id="slider" min="80" max="320" value="200">
 </div>
-<canvas id="gameCanvas" width="400" height="400" style="display:none;"></canvas>
 <div id="winMessage">🎉 You Win! <button onclick="restartGame()">Play Again</button></div>
 <div id="aboutBox">Created by Theshmil & Sofa ❤️<br><br><button onclick="closeAbout()">Close</button></div>
 
@@ -47,15 +47,28 @@ let gameStarted=false;
 
 function initPucks(){
   pucks=[];
-  const colors=['red','white','white','white','white','black','black','black','black'];
   const center=200;
-  const radius=25;
-  let angle=0;
-  colors.forEach((color,i)=>{
-    let x=center+Math.cos(angle)*radius;
-    let y=center+Math.sin(angle)*radius;
-    pucks.push({x,y,r:12,color,vx:0,vy:0});
-    angle+=Math.PI*2/colors.length;
+  const layers=[
+    ['red'],                      // center queen
+    ['white','black','white','black','white','black'], // first circle
+    ['white','black','white','black','white','black','white','black','white','black'] // second circle
+  ];
+  let radiusStep=18;
+  let currentRadius=0;
+  layers.forEach((layer,layerIdx)=>{
+    if(layerIdx===0){ // center queen
+      pucks.push({x:center,y:center,r:12,color:'red',vx:0,vy:0});
+    } else {
+      currentRadius+=radiusStep;
+      let angle=0;
+      let step=2*Math.PI/layer.length;
+      layer.forEach(color=>{
+        let x=center+Math.cos(angle)*currentRadius;
+        let y=center+Math.sin(angle)*currentRadius;
+        pucks.push({x,y,r:12,color,vx:0,vy:0});
+        angle+=step;
+      });
+    }
   });
 }
 
@@ -89,7 +102,7 @@ function showAbout(){ document.getElementById('aboutBox').style.display='block';
 function closeAbout(){ document.getElementById('aboutBox').style.display='none'; }
 
 function updateSliderPos(){
-  sliderContainer.style.top=(turn=='white')?'440px':'-40px';
+  striker.x=parseInt(slider.value);
 }
 
 slider.addEventListener('input',()=>{
@@ -185,7 +198,6 @@ function physics(){
     turn=(turn=='white')?'black':'white';
     striker.x=200; striker.y=(turn=='white'?360:40);
     slider.value=200;
-    updateSliderPos();
   }
 
   if(pucks.length==0) document.getElementById('winMessage').style.display='block';
