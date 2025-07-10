@@ -10,6 +10,7 @@
   #menu { margin-top:30px; }
   #menu button { margin:10px; padding:15px 30px; font-size:20px; background:#fff; color:#000; border:none; border-radius:10px; cursor:pointer; }
   #scoreboard { margin-top:10px; font-size:18px; }
+  #slider { margin-top:10px; display:none; }
   #winMessage, #aboutBox { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.8); padding:20px; border-radius:10px; font-size:20px; display:none; }
 </style>
 </head>
@@ -23,6 +24,7 @@
 <div id="scoreboard" style="display:none;">
   ⚪ White: <span id="whiteScore">0</span> &nbsp;&nbsp; ⚫ Black: <span id="blackScore">0</span>
 </div>
+<input type="range" id="slider" min="100" max="300" value="200">
 <canvas id="gameCanvas" width="400" height="400" style="display:none;"></canvas>
 <div id="winMessage">🎉 You Win! <button onclick="restartGame()">Play Again</button></div>
 <div id="aboutBox">Created by Theshmil & Sofa ❤️<br><br><button onclick="closeAbout()">Close</button></div>
@@ -30,6 +32,7 @@
 <script>
 const canvas=document.getElementById('gameCanvas');
 const ctx=canvas.getContext('2d');
+const slider=document.getElementById('slider');
 let striker={x:200,y:360,r:12,vx:0,vy:0};
 let pucks=[];
 let dragging=false, dragStart=null, dragEnd=null;
@@ -56,6 +59,7 @@ function restartGame(){
   updateScores();
   turn='white';
   waitingForNextTurn=false;
+  slider.value=200;
   document.getElementById('winMessage').style.display='none';
 }
 
@@ -69,6 +73,7 @@ function startGame(selected){
   document.getElementById('menu').style.display='none';
   document.getElementById('scoreboard').style.display='block';
   canvas.style.display='block';
+  slider.style.display='block';
   restartGame();
 }
 
@@ -97,6 +102,18 @@ canvas.addEventListener('touchstart',e=>{
 });
 canvas.addEventListener('touchmove',e=>{if(dragging){dragEnd=getPos(e); e.preventDefault();}});
 canvas.addEventListener('touchend',e=>{if(dragging){shoot();} dragging=false;});
+
+slider.addEventListener('input',()=>{
+  if(striker.vx==0 && striker.vy==0 && !waitingForNextTurn){
+    let newX=parseInt(slider.value);
+    // check if safe
+    let safe=true;
+    for(let p of pucks){
+      if(Math.hypot(p.x - newX, p.y - striker.y)<p.r+striker.r+2){ safe=false; break;}
+    }
+    if(safe) striker.x=newX;
+  }
+});
 
 function shoot(){
   const dx=dragEnd.x-dragStart.x, dy=dragEnd.y-dragStart.y;
@@ -163,19 +180,23 @@ function physics(){
 function switchTurnSmart(){
   turn = (turn=='white') ? 'black' : 'white';
   let targetY = (turn=='white') ? 360 : 40;
-  let safeX=200;
+  let centerX=200;
+  let safeX=centerX;
 
-  // Find safe X
-  for(let dx=-100; dx<=100; dx+=10){
-    let testX=200+dx;
-    let safe=true;
-    for(let p of pucks){
-      if(Math.hypot(p.x - testX, p.y - targetY)<p.r+striker.r+2){ safe=false; break;}
+  // find center first, then nearest safe
+  for(let dx=0; dx<=100; dx+=10){
+    for(let testX of [centerX+dx, centerX-dx]){
+      let safe=true;
+      for(let p of pucks){
+        if(Math.hypot(p.x - testX, p.y - targetY)<p.r+striker.r+2){ safe=false; break;}
+      }
+      if(safe){ safeX=testX; break;}
     }
-    if(safe){ safeX=testX; break;}
+    if(safeX!=centerX) break;
   }
   striker.x=safeX; striker.y=targetY;
   striker.vx=0; striker.vy=0;
+  slider.value=safeX;
 }
 
 function drawBoard(){
